@@ -231,6 +231,7 @@ header { display: grid; gap: 12px; }
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
   background: var(--plane); display: flex; flex-wrap: wrap; gap: 10px 14px;
   align-items: center; padding: 8px 0; max-width: 100%; min-width: 0;
+  border-bottom: 1px solid var(--rule);
 }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .facts b { color: var(--ink); font-weight: 500; }
@@ -255,7 +256,7 @@ header { display: grid; gap: 12px; }
 .scope button[aria-selected="true"] .scope-n { opacity: .85; }
 .scope .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset; }
 .scope button[aria-selected="true"] .dot { box-shadow: 0 0 0 1px rgba(255,255,255,.35) inset; }
-section.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; display: grid; gap: 16px; }
+section.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; display: grid; gap: 16px; scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 56px); }
 .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; justify-content: space-between; }
 .sec-head .hint { font-size: 12.5px; color: var(--muted); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
@@ -350,14 +351,14 @@ BODY = r"""<div class="wrap">
   <header>
     <div class="eyebrow" id="eyebrow">Personal velocity</div>
     <h1 id="title">Personal velocity</h1>
-    <div class="controls" id="controls">
-      <div class="tabs" id="tabs" role="tablist" aria-label="Year"></div>
-      <div class="scope" id="scope" role="tablist" aria-label="Scope (org or owner)"></div>
-    </div>
     <div class="facts" id="facts"></div>
     <div class="grouplegend" id="grouplegend" aria-label="Group colours"></div>
     <div class="head-note" id="head-note"></div>
   </header>
+  <div class="controls" id="controls">
+    <div class="tabs" id="tabs" role="tablist" aria-label="Year"></div>
+    <div class="scope" id="scope" role="tablist" aria-label="Scope (org or owner)"></div>
+  </div>
   <main id="main"></main>
   <footer>
     Counts are read-only from GitHub. Line and commit counts come from git on each repo's default branch, merges excluded, bot commits excluded by identity matching. See "How these numbers are counted".
@@ -616,7 +617,9 @@ function leadsSection(d){
   // (so number, pill and caption name one period) and the YTD figure moves to
   // the subtitle; with no comparison (no prior year, or a scope absent from the
   // prior year) the numeral stays the full YTD and no pill or comparison
-  // wording is shown. Active days keeps its day-level prior slice.
+  // wording is shown. Active days keeps its day-level prior slice, except when
+  // the scope exists in the prior year but no month has completed yet — then it
+  // drops the pill too so the card does not compare and deny in the same breath.
   const win = hasPrior ? Math.min(cm, pcm) : cm;
   const grid=el("div",{class:"leads"});
   const counts=[
@@ -635,17 +638,27 @@ function leadsSection(d){
       el("div",{class:"r"}, el("div",{class:"v"}, N(num)), pill),
       el("div",{class:"s"}, sub)));
   }
-  const adPrior = priorCoversMD(year,m.through) ? priorActiveDays(scope,year,m.through) : null;
+  const havePriorYear = DATA[year-1]!=null;
+  const priorBlk = havePriorYear ? (scopesOf(DATA[year-1])[scope] || null) : null;
+  // Prior year AND this scope both exist, but no completed-month window has
+  // elapsed yet (current year still in its first month, cm===0): the count
+  // tiles are YTD with no pill, so the active-days tile drops its day-slice pill
+  // too and the card names the single YTD window instead of claiming "new scope".
+  const noCompYet = priorBlk!=null && !compared;
+  const adPrior = (!noCompYet && priorCoversMD(year,m.through)) ? priorActiveDays(scope,year,m.through) : null;
   grid.append(el("div",{class:"lead"}, el("div",{class:"k"},"Active days"),
     el("div",{class:"r"}, el("div",{class:"v"}, N(t.active_days)), deltaPill(t.active_days, adPrior)),
     el("div",{class:"s"}, (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")+" · through "+m.through)));
-  const havePriorYear = DATA[year-1]!=null;
   const wlabel = win>0 ? MON[0]+"–"+MON[win-1] : null;   // completed-month window the counts cover
-  // Caption only claims a comparison when a count tile actually showed one.
+  // Three no-comparison states get three distinct captions (never "new scope"
+  // for a scope that exists in the prior year): no prior year loaded; prior year
+  // without this scope; or prior year with this scope but no completed month yet.
+  // Numeral, pill and caption name one window in every case.
   const basis = (scope!=="all"? "scope: "+scope+" · " : "")
     + (compared && wlabel ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
        : !havePriorYear ? "no prior year loaded"
-       : "new scope · no prior-year comparison");
+       : !priorBlk ? "new scope · no prior-year comparison"
+       : "YTD through "+m.through+" · no completed months to compare yet");
   return card("Headline", basis, grid);
 }
 

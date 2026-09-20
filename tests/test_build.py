@@ -76,6 +76,43 @@ class BuildSmoke(unittest.TestCase):
             self.assertIn("--g8: #e34948", doc)          # full 8-hue palette present
             self.assertEqual(doc.count("--gother: #8b95a1"), 2)
 
+    def test_control_row_pins_with_env_top_and_opaque_bg(self):
+        # The compact control row (year tabs + scope chips) pins to the top while
+        # scrolling: sticky, offset by the safe-area inset (env()), with an opaque
+        # token background and a bottom hairline, so it stays legible over content
+        # scrolling under it. Regression guard for the "controls vanish on scroll"
+        # cause: the row must live outside <header> (a short containing block).
+        import pathlib
+        import re
+        with tempfile.TemporaryDirectory() as td:
+            td = pathlib.Path(td)
+            data_dir = td / "data"
+            data_dir.mkdir()
+            write_demo(data_dir)
+            out = td / "out" / "velocity.html"
+            self.assertEqual(build.main(["--data-dir", str(data_dir), "--out", str(out)]), 0)
+            doc = out.read_text()
+            frag = out.with_name("velocity.artifact.html").read_text()
+            for text in (doc, frag):
+                # the .controls rule is sticky, offset by env(safe-area-inset-top),
+                # painted on an opaque token background with a bottom hairline
+                m = re.search(r"\.controls\s*\{([^}]*)\}", text)
+                self.assertIsNotNone(m, "no .controls rule in emitted CSS")
+                rule = m.group(1)
+                self.assertIn("position: sticky", rule)
+                self.assertIn("top: env(safe-area-inset-top, 0px)", rule)
+                self.assertIn("background: var(--plane)", rule)   # opaque token
+                self.assertIn("border-bottom: 1px solid var(--rule)", rule)
+                # the control row is a sibling of <header>, not nested inside it,
+                # so its containing block is the full-height page wrap and it pins
+                # for the whole scroll rather than only within the header box
+                header = re.search(r"<header>.*?</header>", text, re.S)
+                self.assertIsNotNone(header)
+                self.assertNotIn('class="controls"', header.group(0))
+                self.assertIn('<div class="controls" id="controls">', text)
+                # anchored sections clear the pinned bar on deep-link scroll
+                self.assertIn("scroll-margin-top: calc(env(safe-area-inset-top, 0px)", text)
+
     def test_redact_private_removes_private_names(self):
         import pathlib
         with tempfile.TemporaryDirectory() as td:
