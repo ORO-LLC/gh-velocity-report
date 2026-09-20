@@ -293,14 +293,20 @@ const svg = (t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e
 let GROUP_COLOR = {};
 let CUR_RGM = {};                    // full_name -> group, for the current year
 function computeGroupColors(){
-  const newest = Math.max(...YEARS);
-  const sc = scopesOf(DATA[newest]);
+  // Union of groups across every loaded year, newest-year commit order first,
+  // then groups seen only in older years — so a group that is quiet this year
+  // but active in a prior one keeps its own hue instead of collapsing to gray.
   const map = {};
   let slot = 0;
-  for(const g of groupsOrdered(sc)){
-    if(g === "other"){ map[g] = "other"; continue; }
-    slot++;
-    map[g] = slot <= 8 ? slot : "cy" + (((slot - 1) % 8) + 1);
+  const seen = new Set();
+  for(const y of [...YEARS].sort((a,b)=>b-a)){
+    for(const g of groupsOrdered(scopesOf(DATA[y]))){
+      if(seen.has(g)) continue;
+      seen.add(g);
+      if(g === "other"){ map[g] = "other"; continue; }
+      slot++;
+      map[g] = slot <= 8 ? slot : "cy" + (((slot - 1) % 8) + 1);
+    }
   }
   GROUP_COLOR = map;
 }
@@ -366,10 +372,24 @@ function priorActiveDays(scope, year, through){
   for(const iso in blk.calendar){ if(iso.slice(5) <= md && (blk.calendar[iso].commits||0) > 0) c++; }
   return c;
 }
+// whole months elapsed this year: the current month counts only once it is over,
+// so same-period deltas never weigh a partial month against a full prior one.
+function completedMonths(m){
+  try{ const d=new Date(m.through+"T00:00:00"); const mo=d.getMonth()+1;
+    const lastDay=new Date(d.getFullYear(), mo, 0).getDate();
+    return d.getDate()>=lastDay ? mo : mo-1;
+  }catch(e){ return 12; }
+}
+// current-year sum of a field over months up to (and including) uptoMonth
+function curSum(d, field, uptoMonth){ let t=0; for(const x of (d.by_month||[])){ if(x.month<=uptoMonth) t+=(x[field]||0); } return t; }
 function deltaPill(cur, prior){
   if(prior == null) return null;
   const diff = cur - prior;
-  const pct = prior === 0 ? (cur===0?0:1) : diff/prior;
+  if(prior === 0){
+    if(cur === 0) return null;                       // nothing either year — no pill
+    return el("span",{class:"pill up", title:"prior year same period: 0 (new activity)"}, "▲ ", "new");
+  }
+  const pct = diff/prior;
   const cls = Math.abs(pct) <= 0.02 ? "flat" : (diff > 0 ? "up" : "down");
   const arrow = cls==="up" ? "▲" : cls==="down" ? "▼" : "–";
   const txt = (diff>0?"+":diff<0?"−":"±") + Math.round(Math.abs(pct)*100) + "%";
@@ -469,22 +489,30 @@ function card(title, hint, ...body){
 
 // Lead tile row (V3): four large headline tiles with same-period YoY delta pills.
 function leadsSection(d){
-  const t=d.totals, m=d.meta, scope=d._scope, year=m.year, em=elapsedMonths(m);
+  const t=d.totals, m=d.meta, scope=d._scope, year=m.year;
+  const cm=completedMonths(m);
+  // Count metrics compare the same whole-month window on both years (no prior
+  // day-grain exists for PRs/issues). Active days keeps its day-level prior
+  // slice, so it compares the true same period through meta.through. Each lead:
+  // [label, displayed value, pill's current basis, pill's prior basis, subtitle].
   const leads=[
-    ["Commits", t.commits, x=>priorSum(scope,year,"commits",em), "default branch · merges excluded"],
-    ["PRs merged", t.prs_merged, x=>priorSum(scope,year,"prs_merged",em), N(t.prs_opened)+" opened in scope"],
-    ["Issues closed", t.issues_closed, x=>priorSum(scope,year,"issues_closed",em), N(t.issues_opened)+" opened"],
-    ["Active days", t.active_days, x=>priorActiveDays(scope,year,m.through),
+    ["Commits", N(t.commits), curSum(d,"commits",cm), priorSum(scope,year,"commits",cm), "default branch · merges excluded"],
+    ["PRs merged", N(t.prs_merged), curSum(d,"prs_merged",cm), priorSum(scope,year,"prs_merged",cm), N(t.prs_opened)+" opened in scope"],
+    ["Issues closed", N(t.issues_closed), curSum(d,"issues_closed",cm), priorSum(scope,year,"issues_closed",cm), N(t.issues_opened)+" opened"],
+    ["Active days", N(t.active_days), t.active_days, priorActiveDays(scope,year,m.through),
       (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")]
   ];
   const grid=el("div",{class:"leads"});
-  for(const [k,v,priorFn,sub] of leads){
+  for(const [k,disp,pcur,pprior,sub] of leads){
     grid.append(el("div",{class:"lead"},
       el("div",{class:"k"},k),
-      el("div",{class:"r"}, el("div",{class:"v"}, N(v)), deltaPill(v, priorFn())),
+      el("div",{class:"r"}, el("div",{class:"v"}, disp), deltaPill(pcur, pprior)),
       el("div",{class:"s"},sub)));
   }
-  return card("Headline", scope==="all"? "same-period change vs prior year" : "scope: "+scope+" · vs prior year", grid);
+  const basis = scope==="all"
+    ? (cm>0? "vs prior year · same "+cm+"-month period" : "vs prior year")
+    : "scope: "+scope+" · vs prior year";
+  return card("Headline", basis, grid);
 }
 
 function tilesSection(d){
@@ -563,8 +591,9 @@ function monthlySection(d){
   const METRICS=[["commits","Commits"],["prs_merged","PRs merged"],["issues_closed","Issues closed"]];
   let metric="commits";
   const groups = scope==="all" ? groupsOrdered(scopes) : [scope];
+  const stacked = scope==="all" && groups.length>0;   // legacy data has no group scopes → one series
   function seriesFor(field){
-    if(scope==="all") return groups.map(g=>({g, vals:(scopes[g].by_month||[]).map(x=>x[field]||0)}));
+    if(stacked) return groups.map(g=>({g, vals:(scopes[g].by_month||[]).map(x=>x[field]||0)}));
     return [{g:scope, vals: bm.map(x=>x[field]||0)}];
   }
   const chartWrap=el("div",{class:"chart"});
@@ -575,7 +604,7 @@ function monthlySection(d){
     const field=metric, ser=seriesFor(field);
     const totals=MON.map((_,mi)=> ser.reduce((a,se)=>a+(se.vals[mi]||0),0));
     const ax=axisTicks(Math.max(...totals));
-    const s=svg("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Monthly "+field.replace("_"," ")+(scope==="all"?" by group":"")});
+    const s=svg("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Monthly "+field.replace("_"," ")+(stacked?" by group":"")});
     for(const val of ax.ticks){ const y=padT+ih*(1-val/ax.max);
       s.append(svg("line",{x1:padL,y1:y,x2:W-padR,y2:y,stroke:"var(--rule-soft)","stroke-width":1}));
       const tx=svg("text",{x:padL-6,y:y+3,"text-anchor":"end","font-size":10}); tx.textContent=N(val); s.append(tx); }
@@ -586,7 +615,7 @@ function monthlySection(d){
       ser.forEach(se=>{
         const v=se.vals[mi]||0; if(v<=0) return;
         const h=ih*v/ax.max; const yTop=padT+ih*(1-(acc+v)/ax.max);
-        const gap = (scope==="all" && h>2.5) ? 1.5 : 0;   // 2px surface gap between stacked segments
+        const gap = (stacked && h>2.5) ? 1.5 : 0;   // 2px surface gap between stacked segments
         const rr=svg("rect",{x:padL+bw*mi+x0off, y:yTop+gap, width:gw, height:Math.max(0,h-gap), fill:groupVar(se.g).mark, rx:1.5});
         const rows=perGroup.map(z=>`${z[0]}: ${N(z[1])}`).join("<br>");
         rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${MON[mi]} ${d.meta.year}</b><br>${rows}<br>total: ${N(totals[mi])}`));
@@ -597,7 +626,7 @@ function monthlySection(d){
     });
     chartWrap.innerHTML=""; chartWrap.append(s);
     legendWrap.innerHTML="";
-    if(scope==="all") legendWrap.append(legend(groups.map(g=>[groupVar(g).mark, g])));
+    if(stacked) legendWrap.append(legend(groups.map(g=>[groupVar(g).mark, g])));
     else legendWrap.append(legend([[groupVar(scope).mark, scope]]));
   }
   const seg=el("div",{class:"seg",id:"metric-toggle",role:"tablist","aria-label":"Monthly metric"});
@@ -621,8 +650,9 @@ function monthlySection(d){
   fr.append(el("td",{class:"l"},"Total"));
   for(const [key,label,cls,fn] of MONTH_COLS.slice(1)) fr.append(el("td",{class:cls||""}, fn(tot)));
   tbl.append(el("tfoot",null,fr));
-  const hint = scope==="all" ? "stacked by group · toggle the metric; table has every counter"
-                             : "bars in this group's colour; table has every counter";
+  const hint = stacked ? "stacked by group · toggle the metric; table has every counter"
+                       : (scope==="all" ? "toggle the metric; table has every counter"
+                                        : "bars in this group's colour; table has every counter");
   const head=el("div",{class:"sec-head"}, el("h2",null,"Monthly activity"),
     el("div",{style:"display:flex;align-items:center;gap:12px;flex-wrap:wrap"}, el("span",{class:"hint"},hint), seg));
   return el("section",{class:"card"}, head, legendWrap, chartWrap, el("div",{class:"tablewrap"}, tbl));
@@ -762,7 +792,9 @@ function treemapSection(d){
         el("div",{class:"num"}, N(z.v)))); }
     box.innerHTML=""; box.append(wrap);
   }
+  const hintEl=el("span",{class:"hint"},"");
   function draw(){
+    hintEl.textContent="blocks sized by "+metric[1].toLowerCase()+", coloured by group";
     const rs=rows();
     if(!rs.length){ box.innerHTML=""; box.append(el("div",{class:"cap"},"no repositories with "+metric[1].toLowerCase()+" in this scope")); return; }
     const wpx=box.clientWidth || (box.parentElement? box.parentElement.clientWidth:0);
@@ -774,8 +806,9 @@ function treemapSection(d){
   const seg=el("div",{class:"seg",id:"treemap-metric",role:"tablist","aria-label":"Treemap size metric"});
   METRICS.forEach(m=>{ const b=el("button",{type:"button",role:"tab","data-m":m[0],"aria-selected":String(m===metric)}, m[1]);
     b.addEventListener("click",()=>{ metric=m; for(const x of seg.children) x.setAttribute("aria-selected",String(x.dataset.m===m[0])); draw(); }); seg.append(b); });
+  hintEl.textContent="blocks sized by "+metric[1].toLowerCase()+", coloured by group";
   const head=el("div",{class:"sec-head"}, el("h2",null,"Where the year went"),
-    el("div",{style:"display:flex;align-items:center;gap:12px;flex-wrap:wrap"}, el("span",{class:"hint"},"blocks sized by "+metric[1].toLowerCase()+", coloured by group"), seg));
+    el("div",{style:"display:flex;align-items:center;gap:12px;flex-wrap:wrap"}, hintEl, seg));
   return el("section",{class:"card"}, head, box);
 }
 
