@@ -527,11 +527,12 @@ function leadsSection(d){
   const hasPrior = pcm!=null && pcm>0 && cm>0;
   // Count tiles compare the same whole-month window on both years (no prior
   // day-grain exists for PRs/issues) — clamped to what the prior snapshot
-  // actually covers, so a partial prior file can't inflate the delta. The
-  // headline numeral IS that windowed value, so number, pill and caption name
-  // one period; the YTD figure moves to the subtitle. Active days keeps its
-  // day-level prior slice (true same period through meta.through), shown only
-  // when the prior snapshot reaches that day.
+  // actually covers, so a partial prior file can't inflate the delta. When that
+  // scope has a real prior series the headline numeral IS the windowed value
+  // (so number, pill and caption name one period) and the YTD figure moves to
+  // the subtitle; with no comparison (no prior year, or a scope absent from the
+  // prior year) the numeral stays the full YTD and no pill or comparison
+  // wording is shown. Active days keeps its day-level prior slice.
   const win = hasPrior ? Math.min(cm, pcm) : cm;
   const grid=el("div",{class:"leads"});
   const counts=[
@@ -539,10 +540,13 @@ function leadsSection(d){
     ["PRs merged","prs_merged", t.prs_merged, N(t.prs_opened)+" opened in scope"],
     ["Issues closed","issues_closed", t.issues_closed, N(t.issues_opened)+" opened"]
   ];
+  let compared=false;   // did any count tile show a real prior comparison for this scope?
   for(const [k,f,ytd,extra] of counts){
-    const num = win>0 ? curSum(d,f,win) : ytd;
-    const pill = (win>0 && hasPrior) ? deltaPill(curSum(d,f,win), priorSum(scope,year,f,win)) : null;
-    const sub = ((win>0 && win<12)? N(ytd)+" YTD through "+m.through+" · " : "") + extra;
+    const prior = (hasPrior && win>0) ? priorSum(scope,year,f,win) : null;
+    const num = prior!=null ? curSum(d,f,win) : ytd;
+    const pill = prior!=null ? deltaPill(curSum(d,f,win), prior) : null;
+    if(prior!=null) compared=true;
+    const sub = ((prior!=null && win<12)? N(ytd)+" YTD through "+m.through+" · " : "") + extra;
     grid.append(el("div",{class:"lead"}, el("div",{class:"k"},k),
       el("div",{class:"r"}, el("div",{class:"v"}, N(num)), pill),
       el("div",{class:"s"}, sub)));
@@ -553,10 +557,11 @@ function leadsSection(d){
     el("div",{class:"s"}, (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")+" · through "+m.through)));
   const havePriorYear = DATA[year-1]!=null;
   const wlabel = win>0 ? MON[0]+"–"+MON[win-1] : null;   // completed-month window the counts cover
+  // Caption only claims a comparison when a count tile actually showed one.
   const basis = (scope!=="all"? "scope: "+scope+" · " : "")
-    + (!havePriorYear ? "no prior year loaded"
-       : (hasPrior && wlabel) ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
-       : "vs prior year");
+    + (compared && wlabel ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
+       : !havePriorYear ? "no prior year loaded"
+       : "new scope · no prior-year comparison");
   return card("Headline", basis, grid);
 }
 
