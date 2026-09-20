@@ -38,7 +38,7 @@ CFG = {
             "Robocat": {"logins": ["robocat"], "emails": ["robo@example.com"]},
         },
     },
-    "orgs": ["example-org", "widgets-inc"],
+    "orgs": ["example-org", "widgets-inc", "acme-labs", "globex"],
     "personal_owners": ["octocat"],
     "gh_accounts": ["octocat", "octocat-work"],
     "exclude_repos": [],
@@ -57,6 +57,9 @@ REPOS = {
     2024: [
         ("example-org/web", False, False, False),
         ("example-org/api", True, False, False),
+        ("acme-labs/pipeline", False, False, False),
+        ("acme-labs/cli", False, False, False),
+        ("globex/platform", True, False, False),
         ("octocat/dotfiles", False, False, False),
         ("opensource/tool", False, True, False),
     ],
@@ -64,6 +67,9 @@ REPOS = {
         ("example-org/web", False, False, False),
         ("example-org/api", True, False, False),
         ("widgets-inc/widget", False, False, False),
+        ("acme-labs/pipeline", False, False, False),
+        ("acme-labs/cli", False, False, False),
+        ("globex/platform", True, False, False),
         ("octocat/dotfiles", False, False, False),
         ("opensource/tool", False, True, False),
         ("opensource/archived-lib", False, False, True),
@@ -147,6 +153,28 @@ def gen_year(rng, year):
         if rng.random() < 0.5:
             releases[full] = [{"published_at": iso(year, rng.randint(0, 360), 16), "login": "octocat"}
                               for _ in range(rng.randint(1, 3))]
+
+    # Deterministic streak + busiest day in the newest year, so calendar
+    # annotations (V6), YoY pills (V3) and the treemap (V7) always have a shape
+    # to draw. A 10-day active-day run in June with one heavy day on top.
+    if year == max(REPOS):
+        streak_repo = "acme-labs/pipeline"
+        bucket = commits_by_repo[streak_repo]["commits"]
+        lp = login_presence[streak_repo]
+        seq = 0
+        for doy in range(160, 170):            # ten consecutive active days
+            burst = 12 if doy == 164 else 1    # doy 164 -> busiest day of the year
+            for _ in range(burst):
+                seq += 1
+                rec = {"sha": f"{streak_repo}-{year}-streak-{seq}",
+                       "email": "mona@example.com", "date": iso(year, doy, 14)}
+                for k in collect.COMMIT_LINE_FIELDS:
+                    rec[k] = 0
+                rec["code_add"] = 180
+                rec["code_del"] = 60
+                rec["docs_add"] = 24
+                bucket.append(rec)
+                lp["octocat"] = lp.get("octocat", 0) + 1
     return commits_by_repo, login_presence, items, reviews, releases
 
 

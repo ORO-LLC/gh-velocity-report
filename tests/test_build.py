@@ -62,6 +62,20 @@ class BuildSmoke(unittest.TestCase):
             self.assertIn('id="scope"', doc)   # scope control renders
             self.assertIn('id="tabs"', doc)
 
+            # new visual-pass controls are present in both outputs: the group
+            # legend strip is static markup; the V4 metric toggle and V7 treemap
+            # size toggle get their stable ids in the inline script.
+            for marker in ('id="grouplegend"', 'id:"metric-toggle"', 'id:"treemap-metric"'):
+                self.assertIn(marker, doc)
+                self.assertIn(marker, fragment)
+
+            # group colour tokens (V1) defined in the light block and BOTH dark
+            # blocks (media query + data-theme override)
+            self.assertIn("--g1: #2a78d6", doc)          # light slot 1
+            self.assertEqual(doc.count("--g1: #3987e5"), 2)  # dark slot 1 in both dark blocks
+            self.assertIn("--g8: #e34948", doc)          # full 8-hue palette present
+            self.assertEqual(doc.count("--gother: #8b95a1"), 2)
+
     def test_redact_private_removes_private_names(self):
         import pathlib
         with tempfile.TemporaryDirectory() as td:
