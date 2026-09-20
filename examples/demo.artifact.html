@@ -375,13 +375,20 @@ function priorActiveDays(scope, year, through){
 // whole months elapsed this year: the current month counts only once it is over,
 // so same-period deltas never weigh a partial month against a full prior one.
 function completedMonths(m){
-  try{ const d=new Date(m.through+"T00:00:00"); const mo=d.getMonth()+1;
-    const lastDay=new Date(d.getFullYear(), mo, 0).getDate();
-    return d.getDate()>=lastDay ? mo : mo-1;
-  }catch(e){ return 12; }
+  const d=new Date((((m&&m.through))||"")+"T00:00:00");
+  if(!Number.isFinite(d.getTime())) return 0;          // unparseable through → no comparable window
+  const mo=d.getMonth()+1;
+  // The collector sets through = min(Dec 31, today), so a year is fully elapsed
+  // only when through reaches Dec 31; any earlier date is an as-of-today
+  // snapshot whose through-month is still in progress and does not count.
+  return (mo===12 && d.getDate()===31) ? 12 : mo-1;
 }
 // current-year sum of a field over months up to (and including) uptoMonth
 function curSum(d, field, uptoMonth){ let t=0; for(const x of (d.by_month||[])){ if(x.month<=uptoMonth) t+=(x[field]||0); } return t; }
+// completed months the prior-year snapshot covers (a full past year → 12; null = no prior year)
+function priorCompletedMonths(year){ const py=DATA[year-1]; return py? completedMonths(py.meta||{}) : null; }
+// does the prior-year snapshot reach at least the same calendar day (MM-DD)?
+function priorCoversMD(year, through){ const py=DATA[year-1]; if(!py||!py.meta||!py.meta.through) return false; return py.meta.through.slice(5) >= (through||"").slice(5); }
 function deltaPill(cur, prior){
   if(prior == null) return null;
   const diff = cur - prior;
@@ -491,27 +498,35 @@ function card(title, hint, ...body){
 function leadsSection(d){
   const t=d.totals, m=d.meta, scope=d._scope, year=m.year;
   const cm=completedMonths(m);
-  // Count metrics compare the same whole-month window on both years (no prior
-  // day-grain exists for PRs/issues). Active days keeps its day-level prior
-  // slice, so it compares the true same period through meta.through. Each lead:
-  // [label, displayed value, pill's current basis, pill's prior basis, subtitle].
-  const leads=[
-    ["Commits", N(t.commits), curSum(d,"commits",cm), priorSum(scope,year,"commits",cm), "default branch · merges excluded"],
-    ["PRs merged", N(t.prs_merged), curSum(d,"prs_merged",cm), priorSum(scope,year,"prs_merged",cm), N(t.prs_opened)+" opened in scope"],
-    ["Issues closed", N(t.issues_closed), curSum(d,"issues_closed",cm), priorSum(scope,year,"issues_closed",cm), N(t.issues_opened)+" opened"],
-    ["Active days", N(t.active_days), t.active_days, priorActiveDays(scope,year,m.through),
-      (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")]
-  ];
+  const pcm=priorCompletedMonths(year);              // null = no prior year loaded
+  const hasPrior = pcm!=null && pcm>0 && cm>0;
+  // Count tiles compare the same whole-month window on both years (no prior
+  // day-grain exists for PRs/issues) — clamped to what the prior snapshot
+  // actually covers, so a partial prior file can't inflate the delta. The
+  // headline numeral IS that windowed value, so number, pill and caption name
+  // one period; the YTD figure moves to the subtitle. Active days keeps its
+  // day-level prior slice (true same period through meta.through), shown only
+  // when the prior snapshot reaches that day.
+  const win = hasPrior ? Math.min(cm, pcm) : cm;
   const grid=el("div",{class:"leads"});
-  for(const [k,disp,pcur,pprior,sub] of leads){
-    grid.append(el("div",{class:"lead"},
-      el("div",{class:"k"},k),
-      el("div",{class:"r"}, el("div",{class:"v"}, disp), deltaPill(pcur, pprior)),
-      el("div",{class:"s"},sub)));
+  const counts=[
+    ["Commits","commits", t.commits, "default branch, merges excluded"],
+    ["PRs merged","prs_merged", t.prs_merged, N(t.prs_opened)+" opened in scope"],
+    ["Issues closed","issues_closed", t.issues_closed, N(t.issues_opened)+" opened"]
+  ];
+  for(const [k,f,ytd,extra] of counts){
+    const num = win>0 ? curSum(d,f,win) : ytd;
+    const pill = (win>0 && hasPrior) ? deltaPill(curSum(d,f,win), priorSum(scope,year,f,win)) : null;
+    const sub = ((win>0 && win<12)? N(ytd)+" YTD through "+m.through+" · " : "") + extra;
+    grid.append(el("div",{class:"lead"}, el("div",{class:"k"},k),
+      el("div",{class:"r"}, el("div",{class:"v"}, N(num)), pill),
+      el("div",{class:"s"}, sub)));
   }
-  const basis = scope==="all"
-    ? (cm>0? "vs prior year · same "+cm+"-month period" : "vs prior year")
-    : "scope: "+scope+" · vs prior year";
+  const adPrior = priorCoversMD(year,m.through) ? priorActiveDays(scope,year,m.through) : null;
+  grid.append(el("div",{class:"lead"}, el("div",{class:"k"},"Active days"),
+    el("div",{class:"r"}, el("div",{class:"v"}, N(t.active_days)), deltaPill(t.active_days, adPrior)),
+    el("div",{class:"s"}, (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")+" · through "+m.through)));
+  const basis = (scope==="all"? "" : "scope: "+scope+" · ") + "vs prior year, same elapsed period";
   return card("Headline", basis, grid);
 }
 
