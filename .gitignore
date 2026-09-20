@@ -1,0 +1,19 @@
+# user-local config (contains your logins/emails) and generated output
+/config.json
+/data/
+/out/
+
+# demo data is regenerated deterministically by examples/make_demo.py
+/examples/data/
+
+# python
+__pycache__/
+*.pyc
+
+# macOS / Finder
+.DS_Store
+* 2
+* 2.*
+* 3
+* 3.*
+* copy*

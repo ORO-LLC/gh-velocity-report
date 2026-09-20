@@ -1,0 +1,20 @@
+{
+  "display_name": "Octocat",
+  "identities": {
+    "logins": ["octocat", "octocat-work"],
+    "emails": ["mona@example.com", "octocat@users.noreply.github.com"]
+  },
+  "orgs": ["example-org"],
+  "personal_owners": ["octocat", "octocat-work"],
+  "gh_accounts": ["octocat", "octocat-work"],
+  "exclude_repos": [],
+  "bot_suffixes": ["[bot]"],
+  "timezone": "UTC",
+  "classification": {
+    "doc_ext": [".md", ".mdx", ".rst", ".txt", ".adoc"],
+    "doc_dirs": ["docs", "doc"],
+    "excluded_dirs": ["node_modules", "dist", "build", "vendor", ".claude"],
+    "excluded_ext": [".map", ".snap", ".lock"],
+    "lockfiles": ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "Cargo.lock", "poetry.lock", "composer.lock", "Gemfile.lock"]
+  }
+}
