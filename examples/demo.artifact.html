@@ -292,6 +292,14 @@ const svg = (t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e
 // past slot 8 cycles with a lighter tint of the reused slot.
 let GROUP_COLOR = {};
 let CUR_RGM = {};                    // full_name -> group, for the current year
+// Groups present for a year's scopes, in stable colour order. Falls back to the
+// all-block `by_org` ordering for legacy (no-`scopes`) files, which carry their
+// org breakdown at the top level rather than as scope keys.
+function groupsForScopes(scopes){
+  const gs = groupsOrdered(scopes);
+  if(gs.length) return gs;
+  return [...(((scopes.all||{}).by_org)||[])].sort((a,b)=>(b.commits||0)-(a.commits||0)).map(r=>r.group).filter(Boolean);
+}
 function computeGroupColors(){
   // Union of groups across every loaded year, newest-year commit order first,
   // then groups seen only in older years — so a group that is quiet this year
@@ -300,7 +308,7 @@ function computeGroupColors(){
   let slot = 0;
   const seen = new Set();
   for(const y of [...YEARS].sort((a,b)=>b-a)){
-    for(const g of groupsOrdered(scopesOf(DATA[y]))){
+    for(const g of groupsForScopes(scopesOf(DATA[y]))){
       if(seen.has(g)) continue;
       seen.add(g);
       if(g === "other"){ map[g] = "other"; continue; }
@@ -381,6 +389,10 @@ function completedMonths(m){
   // The collector sets through = min(Dec 31, today), so a year is fully elapsed
   // only when through reaches Dec 31; any earlier date is an as-of-today
   // snapshot whose through-month is still in progress and does not count.
+  // A Dec-31 `through` is treated as a completed year by definition: the emitted
+  // JSON cannot distinguish a completed historical year from a live snapshot
+  // taken on Dec 31 (make_demo sets generated_at to Dec 31 of the data year), so
+  // the once-a-year Dec-31 live case carries at most a sub-day bias.
   return (mo===12 && d.getDate()===31) ? 12 : mo-1;
 }
 // current-year sum of a field over months up to (and including) uptoMonth
@@ -404,6 +416,9 @@ function deltaPill(cur, prior){
 }
 
 const tip = document.getElementById("tip");
+// Escape repo/owner/group names before they enter the innerHTML tooltip sink.
+// GitHub names can't hold markup, but a hand-crafted third-party JSON could.
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function showTip(ev, html){ tip.innerHTML=html; tip.style.opacity=1; moveTip(ev); }
 function moveTip(ev){ const x=ev.clientX, y=ev.clientY; tip.style.left=Math.min(x+12, innerWidth-tip.offsetWidth-8)+"px"; tip.style.top=(y+16)+"px"; }
 function hideTip(){ tip.style.opacity=0; }
@@ -479,11 +494,13 @@ function render(year, scope){
 function buildGroupLegend(scopes, active){
   const cont = document.getElementById("grouplegend");
   cont.innerHTML = "";
-  const groups = groupsOrdered(scopes);
+  const groups = groupsForScopes(scopes);
   if(!groups.length){ cont.append(el("span",{class:"gl-c"},"one group")); return; }
+  const byOrg = ((scopes.all||{}).by_org)||[];
+  const commitsOf = g => { const s=scopes[g]; if(s&&s.totals) return s.totals.commits||0; const r=byOrg.find(x=>x.group===g); return r? (r.commits||0):0; };
   cont.append(el("span",{class:"gl-c",style:"letter-spacing:.08em"},"GROUPS"));
   for(const g of groups){
-    const c = ((scopes[g]||{}).totals||{}).commits || 0;
+    const c = commitsOf(g);
     cont.append(el("span",{class:"gl"+(g===active?" ":""),style:g===active?"color:var(--ink);font-weight:600":""},
       groupDot(g), g, el("span",{class:"gl-c"}, N(c))));
   }
@@ -526,7 +543,12 @@ function leadsSection(d){
   grid.append(el("div",{class:"lead"}, el("div",{class:"k"},"Active days"),
     el("div",{class:"r"}, el("div",{class:"v"}, N(t.active_days)), deltaPill(t.active_days, adPrior)),
     el("div",{class:"s"}, (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")+" · through "+m.through)));
-  const basis = (scope==="all"? "" : "scope: "+scope+" · ") + "vs prior year, same elapsed period";
+  const havePriorYear = DATA[year-1]!=null;
+  const wlabel = win>0 ? MON[0]+"–"+MON[win-1] : null;   // completed-month window the counts cover
+  const basis = (scope!=="all"? "scope: "+scope+" · " : "")
+    + (!havePriorYear ? "no prior year loaded"
+       : (hasPrior && wlabel) ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
+       : "vs prior year");
   return card("Headline", basis, grid);
 }
 
@@ -632,7 +654,7 @@ function monthlySection(d){
         const h=ih*v/ax.max; const yTop=padT+ih*(1-(acc+v)/ax.max);
         const gap = (stacked && h>2.5) ? 1.5 : 0;   // 2px surface gap between stacked segments
         const rr=svg("rect",{x:padL+bw*mi+x0off, y:yTop+gap, width:gw, height:Math.max(0,h-gap), fill:groupVar(se.g).mark, rx:1.5});
-        const rows=perGroup.map(z=>`${z[0]}: ${N(z[1])}`).join("<br>");
+        const rows=perGroup.map(z=>`${esc(z[0])}: ${N(z[1])}`).join("<br>");
         rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${MON[mi]} ${d.meta.year}</b><br>${rows}<br>total: ${N(totals[mi])}`));
         rr.addEventListener("mouseleave",hideTip);
         s.append(rr); acc+=v;
@@ -786,7 +808,7 @@ function treemapSection(d){
       const z=nd.d, grp=groupOf(z.r), pct=100-(idx%4)*7;
       const fill="color-mix(in srgb, "+groupVar(grp).mark+" "+pct+"%, var(--surface))";
       const rr=svg("rect",{x:nd.x+0.75,y:nd.y+0.75,width:Math.max(0,nd.w-1.5),height:Math.max(0,nd.h-1.5),fill,rx:2});
-      rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${z.r.full_name}</b><br>${grp}<br>${metric[1]}: ${N(z.v)}${z.r._agg!=null?" ("+z.r._agg+" repos)":""}`));
+      rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${esc(z.r.full_name)}</b><br>${esc(grp)}<br>${metric[1]}: ${N(z.v)}${z.r._agg!=null?" ("+z.r._agg+" repos)":""}`));
       rr.addEventListener("mouseleave",hideTip);
       s.append(rr);
       if(nd.w>58 && nd.h>24){
