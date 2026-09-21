@@ -289,9 +289,11 @@ def resolve_group_colors(years, cli_overrides=None, warn=None):
     for name in list(resolved):
         if name not in union:
             warn(f"group_colors: group {name!r} is not present in the loaded data; ignoring it")
-            val = resolved.pop(name)
-            if isinstance(val, int):
-                taken.discard(val)
+            resolved.pop(name)
+    # Rebuild the taken-slot set from the pins that survive, so dropping an absent
+    # group that shared a slot with a live pin cannot free that still-used slot
+    # and let an automatic group steal the hue.
+    taken = {v for v in resolved.values() if isinstance(v, int)}
 
     gmap = {}
     slot = 0

@@ -113,6 +113,17 @@ class Resolver(unittest.TestCase):
         self.assertEqual(gmap["example-org"], 1)         # slot 1 was not stolen
         self.assertTrue(any("typo-org" in w for w in warns))
 
+    def test_absent_pin_sharing_a_live_slot_does_not_free_it(self):
+        # An absent pin sharing a slot with a live pin must not release that slot:
+        # the present pinned group keeps slot 1 and no automatic group steals it.
+        years = {2025: year(2025, [("example-org", 40), ("acme-labs", 30)],
+                            {"example-org": "g1", "typo-org": "g1"})}
+        gmap, _, warns = resolve(years)
+        self.assertEqual(gmap["example-org"], 1)         # live pin keeps its slot
+        self.assertNotEqual(gmap["acme-labs"], 1)        # auto group did not steal it
+        self.assertNotIn("typo-org", gmap)
+        self.assertTrue(any("typo-org" in w for w in warns))
+
     def test_close_colours_warn(self):
         # Two hexes that resolve to nearly the same colour trigger the
         # distinguishability warning (non-fatal).
