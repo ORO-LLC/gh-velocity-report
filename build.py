@@ -19,9 +19,329 @@ scope's block. Everything is embedded inline so it works offline / from file://.
 import argparse
 import json
 import pathlib
+import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+# ---- configurable group colours (issue #6) -------------------------------
+# A group (org/owner) can be pinned to a palette slot (g1..g8) or a hex colour,
+# via config `group_colors` (copied into meta.group_colors by the collector) or
+# the repeatable `--group-color NAME=VALUE` build flag. Explicit choices resolve
+# first; the remaining groups keep the automatic newest-year commit-order slots,
+# skipping slots an explicit choice already took. A hex value has its full token
+# set (base/fill/on for light and dark) derived here in Python so it is unit
+# testable, then emitted as --guN custom properties the page consumes exactly
+# like the built-in --gN slots. The neutral "other" group cannot be recoloured.
+GROUP_SLOT_RE = re.compile(r"^g[1-8]$")
+GROUP_HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+
+# Built-in palette light-theme marks (mirror the --g1..--g8 in :root), used only
+# to measure how close an automatic/explicit colour sits to another for the
+# distinguishability warning.
+_PALETTE_LIGHT = {1: "#2a78d6", 2: "#eb6834", 3: "#1baf7a", 4: "#eda100",
+                  5: "#e87ba4", 6: "#008300", 7: "#4a3aa7", 8: "#e34948"}
+# Surface + near-black text tokens per theme (mirror --surface / the -on tokens).
+_LIGHT_SURFACE = (255, 255, 255)
+_DARK_SURFACE = (0x14, 0x1b, 0x23)
+_LIGHT_NEAR_BLACK = (0x12, 0x18, 0x1f)
+_DARK_NEAR_BLACK = (0x0c, 0x10, 0x15)
+_WHITE = (255, 255, 255)
+
+
+def _hex_to_rgb(h):
+    h = h.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def _rgb_to_hex(rgb):
+    return "#%02x%02x%02x" % tuple(max(0, min(255, int(round(c)))) for c in rgb)
+
+
+def _lin(c):
+    c = c / 255.0
+    return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _rel_lum(rgb):
+    r, g, b = (_lin(c) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a, b):
+    la, lb = _rel_lum(a), _rel_lum(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _rgb_to_hsl(rgb):
+    r, g, b = (c / 255.0 for c in rgb)
+    mx, mn = max(r, g, b), min(r, g, b)
+    l = (mx + mn) / 2
+    if mx == mn:
+        return (0.0, 0.0, l)
+    d = mx - mn
+    s = d / (2 - mx - mn) if l > 0.5 else d / (mx + mn)
+    if mx == r:
+        h = (g - b) / d + (6 if g < b else 0)
+    elif mx == g:
+        h = (b - r) / d + 2
+    else:
+        h = (r - g) / d + 4
+    return (h * 60.0, s, l)
+
+
+def _hsl_to_rgb(h, s, l):
+    hh = (h % 360) / 360.0
+    if s == 0:
+        v = l * 255
+        return (v, v, v)
+    q = l * (1 + s) if l < 0.5 else l + s - l * s
+    p = 2 * l - q
+
+    def hue(t):
+        if t < 0:
+            t += 1
+        if t > 1:
+            t -= 1
+        if t < 1 / 6:
+            return p + (q - p) * 6 * t
+        if t < 1 / 2:
+            return q
+        if t < 2 / 3:
+            return p + (q - p) * (2 / 3 - t) * 6
+        return p
+    return (hue(hh + 1 / 3) * 255, hue(hh) * 255, hue(hh - 1 / 3) * 255)
+
+
+def _reach_contrast(rgb, surface, target, steps=60):
+    """Adjust rgb's lightness (away from the surface) until it clears `target`
+    contrast against `surface`. Returns the adjusted rgb, or None if no lightness
+    reaches it. An already-passing colour is returned unchanged."""
+    if _contrast(rgb, surface) >= target:
+        return rgb
+    h, s, l = _rgb_to_hsl(rgb)
+    darken = _rel_lum(surface) > 0.5
+    step = 1.0 / steps
+    for _ in range(steps):
+        l += -step if darken else step
+        clamped = max(0.0, min(1.0, l))
+        cand = _hsl_to_rgb(h, s, clamped)
+        if _contrast(cand, surface) >= target:
+            return cand
+        if l <= 0.0 or l >= 1.0:
+            return None
+    return None
+
+
+def _reach_text(fill0, surface, near_black, ttext=4.5, tsurf=3.0, steps=60):
+    """From `fill0`, find a fill lightness whose best text colour (near-black or
+    white) clears `ttext` while the fill itself keeps `tsurf` against the surface.
+    Returns (fill_rgb, on_rgb) or (None, None)."""
+    h, s, l = _rgb_to_hsl(fill0)
+    darken = _rel_lum(surface) > 0.5
+    step = 1.0 / steps
+    for _ in range(steps + 1):
+        clamped = max(0.0, min(1.0, l))
+        fill = _hsl_to_rgb(h, s, clamped)
+        cw, cb = _contrast(_WHITE, fill), _contrast(near_black, fill)
+        on = _WHITE if cw >= cb else near_black
+        if max(cw, cb) >= ttext and _contrast(fill, surface) >= tsurf:
+            return fill, on
+        l += -step if darken else step
+        if l < 0.0 or l > 1.0:
+            break
+    return None, None
+
+
+def _derive_theme_tokens(rgb, surface, near_black):
+    mark = _reach_contrast(rgb, surface, 3.0)
+    if mark is None:
+        return None
+    fill, on = _reach_text(mark, surface, near_black)
+    if fill is None:
+        return None
+    return (_rgb_to_hex(mark), _rgb_to_hex(fill), _rgb_to_hex(on))
+
+
+def derive_hex_tokens(hexstr):
+    """Full token set for a hex group in both themes, or None if either theme
+    cannot reach readable contrast. Each theme yields (mark, fill, on) where mark
+    holds >= 3:1 against that theme's surface and `on` holds >= 4.5:1 on `fill`."""
+    if not isinstance(hexstr, str) or not GROUP_HEX_RE.match(hexstr.strip()):
+        return None
+    rgb = _hex_to_rgb(hexstr.strip())
+    light = _derive_theme_tokens(rgb, _LIGHT_SURFACE, _LIGHT_NEAR_BLACK)
+    dark = _derive_theme_tokens(rgb, _DARK_SURFACE, _DARK_NEAR_BLACK)
+    if light is None or dark is None:
+        return None
+    return {"light": light, "dark": dark}
+
+
+def _scopes_groups_for_year(d):
+    """Groups of one year, in stable colour order, mirroring the page's
+    groupsForScopes(scopesOf(d)): new-format files sort scope keys by commits
+    desc (name tiebreak); legacy files fall back to the top-level by_org order."""
+    sc = d.get("scopes")
+    if sc:
+        groups = [k for k in sc if k != "all"]
+        groups.sort(key=lambda g: (-((sc[g].get("totals") or {}).get("commits") or 0), g))
+        return groups
+    by_org = sorted(d.get("by_org") or [], key=lambda r: -(r.get("commits") or 0))
+    return [r.get("group") for r in by_org if r.get("group")]
+
+
+def _union_groups(years):
+    """Union of groups across every loaded year, newest year first (matching the
+    page's computeGroupColors), so a group quiet this year but active earlier
+    keeps its own hue."""
+    seen, order = set(), []
+    for y in sorted(years, reverse=True):
+        for g in _scopes_groups_for_year(years[y]):
+            if g and g not in seen:
+                seen.add(g)
+                order.append(g)
+    return order
+
+
+def _iter_overrides(cli_overrides, warn):
+    for item in cli_overrides or []:
+        if isinstance(item, (tuple, list)) and len(item) == 2:
+            yield item[0], item[1]
+            continue
+        if "=" not in item:
+            warn(f"--group-color {item!r} is not NAME=VALUE; ignoring it")
+            continue
+        name, val = item.split("=", 1)
+        name = name.strip()
+        if not name:
+            warn(f"--group-color {item!r} has an empty group name; ignoring it")
+            continue
+        yield name, val
+
+
+def resolve_group_colors(years, cli_overrides=None, warn=None):
+    """Resolve every group to a colour token. Returns (group_color_map, hex_tokens).
+
+    group_color_map: group name -> palette slot int (1..8), "cyN" (cycled slot),
+    "other" (neutral), or "uN" (a derived hex colour). hex_tokens: "uN" ->
+    {"light": (mark, fill, on), "dark": (mark, fill, on)}.
+
+    Explicit choices (the newest year's meta.group_colors, then CLI overrides on
+    top) win; remaining groups take automatic slots in newest-year commit order,
+    skipping slots an explicit slot choice already took. `other` stays neutral."""
+    if warn is None:
+        warn = lambda m: None
+    explicit_raw = {}
+    if years:
+        gc = ((years[max(years)].get("meta") or {}).get("group_colors")) or {}
+        if isinstance(gc, dict):
+            explicit_raw.update(gc)
+    for name, val in _iter_overrides(cli_overrides, warn):
+        explicit_raw[name] = val
+
+    resolved = {}       # group -> slot int | "uN"
+    hex_tokens = {}     # "uN" -> derived token set
+    taken = set()       # palette slots pinned by an explicit slot choice
+    ucount = 0
+    for name, val in explicit_raw.items():
+        if name == "other":
+            warn("group_colors: 'other' is neutral and cannot be recoloured; ignoring it")
+            continue
+        if not isinstance(val, str):
+            warn(f"group_colors: ignoring non-string value for group {name!r}")
+            continue
+        v = val.strip()
+        if GROUP_SLOT_RE.match(v):
+            n = int(v[1:])
+            resolved[name] = n
+            taken.add(n)
+        elif GROUP_HEX_RE.match(v):
+            tok = derive_hex_tokens(v)
+            if tok is None:
+                warn(f"group_colors: group {name!r} colour {v!r} cannot reach readable "
+                     f"contrast in both themes; falling back to the automatic slot")
+                continue
+            ucount += 1
+            key = "u%d" % ucount
+            hex_tokens[key] = tok
+            resolved[name] = key
+        else:
+            warn(f"group_colors: group {name!r} value {val!r} is not a palette slot "
+                 f"(g1-g8) or hex colour; falling back to the automatic slot")
+
+    gmap = {}
+    slot = 0
+    for g in _union_groups(years):
+        if g in resolved:
+            gmap[g] = resolved[g]
+            continue
+        if g == "other":
+            gmap[g] = "other"
+            continue
+        slot += 1
+        while slot <= 8 and slot in taken:
+            slot += 1
+        gmap[g] = slot if slot <= 8 else "cy" + str(((slot - 1) % 8) + 1)
+
+    # Keep only hex tokens a rendered group actually references.
+    used = {v for v in gmap.values() if isinstance(v, str) and v.startswith("u")}
+    hex_tokens = {k: t for k, t in hex_tokens.items() if k in used}
+    _warn_close_colors(gmap, hex_tokens, warn)
+    return gmap, hex_tokens
+
+
+def _rep_light_rgb(v, hex_tokens):
+    if v == "other":
+        return None
+    if isinstance(v, int):
+        return _hex_to_rgb(_PALETTE_LIGHT[v])
+    s = str(v)
+    if s.startswith("u"):
+        return _hex_to_rgb(hex_tokens[s]["light"][0])
+    if s.startswith("cy"):
+        base = _hex_to_rgb(_PALETTE_LIGHT[int(s[2:])])
+        return tuple(0.55 * c + 0.45 * 255 for c in base)   # color-mix 55% base + white
+    return None
+
+
+def _warn_close_colors(gmap, hex_tokens, warn):
+    """Warn (once per pair) when two groups resolve to colours too close to tell
+    apart: a small hue distance plus a small lightness distance (near-grey colours
+    compared by lightness alone, since their hue is unstable)."""
+    reps = []
+    for g, v in gmap.items():
+        rgb = _rep_light_rgb(v, hex_tokens)
+        if rgb is not None:
+            reps.append((g, _rgb_to_hsl(rgb)))
+    for i in range(len(reps)):
+        for j in range(i + 1, len(reps)):
+            ga, (ha, sa, la) = reps[i]
+            gb, (hb, sb, lb) = reps[j]
+            dl = abs(la - lb)
+            if sa < 0.12 and sb < 0.12:
+                close = dl < 0.10
+            else:
+                dh = abs(ha - hb)
+                dh = min(dh, 360 - dh)
+                close = dh < 18 and dl < 0.12
+            if close:
+                warn(f"group colours for {ga!r} and {gb!r} are hard to tell apart; "
+                     f"consider giving one a different group_colors value")
+
+
+def _hex_token_css(hex_tokens):
+    """(light_css, dark_css) custom-property blocks for the hex groups, to splice
+    into the light :root and both dark theme blocks. Empty when no hex groups."""
+    light, dark = [], []
+    for key, tok in hex_tokens.items():
+        lm, lf, lo = tok["light"]
+        dm, df, do = tok["dark"]
+        light.append(f"--g{key}: {lm}; --g{key}-fill: {lf}; --g{key}-on: {lo};")
+        dark.append(f"--g{key}: {dm}; --g{key}-fill: {df}; --g{key}-on: {do};")
+    return (" ".join(light), " ".join(dark))
 
 
 def load_years(data_dir):
@@ -130,7 +450,7 @@ STYLE = r"""<style>
   --g6: #008300; --g6-fill: #008300; --g6-on: #ffffff;
   --g7: #4a3aa7; --g7-fill: #4a3aa7; --g7-on: #ffffff;
   --g8: #e34948; --g8-fill: #e55453; --g8-on: #12181f;
-  --gother: #78838f; --gother-fill: #59626d; --gother-on: #ffffff;
+  --gother: #78838f; --gother-fill: #59626d; --gother-on: #ffffff; /*__GC_LIGHT__*/
   /* Heat ramp derived from --accent: base = surface, top = a neutral dark so
      "more" darkens (light) / brightens (dark). Recomputes per theme + scope. */
   --heat-base: #eef2f6;
@@ -171,7 +491,7 @@ STYLE = r"""<style>
     --g6: #008300; --g6-fill: #008300; --g6-on: #ffffff;
     --g7: #9085e9; --g7-fill: #9085e9; --g7-on: #0c1015;
     --g8: #e66767; --g8-fill: #e66767; --g8-on: #0c1015;
-    --gother: #8b95a1; --gother-fill: #8b95a1; --gother-on: #0c1015;
+    --gother: #8b95a1; --gother-fill: #8b95a1; --gother-on: #0c1015; /*__GC_DARK__*/
     --heat-base: #1b232e;
     --heat-top: #eaf1fb;
     --heat0: #1b232e;
@@ -203,7 +523,7 @@ STYLE = r"""<style>
   --g6: #008300; --g6-fill: #008300; --g6-on: #ffffff;
   --g7: #9085e9; --g7-fill: #9085e9; --g7-on: #0c1015;
   --g8: #e66767; --g8-fill: #e66767; --g8-on: #0c1015;
-  --gother: #8b95a1; --gother-fill: #8b95a1; --gother-on: #0c1015;
+  --gother: #8b95a1; --gother-fill: #8b95a1; --gother-on: #0c1015; /*__GC_DARK__*/
   --heat-base: #1b232e;
   --heat-top: #eaf1fb;
   --heat0: #1b232e;
@@ -390,6 +710,10 @@ const svg = (t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e
 // scopes. The catch-all "other" group always takes the neutral colour; a group
 // past slot 8 cycles with a lighter tint of the reused slot.
 let GROUP_COLOR = {};
+// Resolved at build time (config group_colors + --group-color, with explicit
+// choices, hex-derived --guN tokens and the automatic newest-year slots already
+// merged). Empty {} for legacy single-group builds → fall back to computing here.
+const GROUP_COLOR_IN = __GROUPCOLORS__;
 let CUR_RGM = {};                    // full_name -> group, for the current year
 // Groups present for a year's scopes, in stable colour order. Falls back to the
 // all-block `by_org` ordering for legacy (no-`scopes`) files, which carry their
@@ -400,6 +724,9 @@ function groupsForScopes(scopes){
   return [...(((scopes.all||{}).by_org)||[])].sort((a,b)=>(b.commits||0)-(a.commits||0)).map(r=>r.group).filter(Boolean);
 }
 function computeGroupColors(){
+  // Prefer the build-time resolution (honours configured/CLI colours); only the
+  // legacy single-group case leaves it empty and falls through to computing here.
+  if(GROUP_COLOR_IN && Object.keys(GROUP_COLOR_IN).length){ GROUP_COLOR = GROUP_COLOR_IN; return; }
   // Union of groups across every loaded year, newest-year commit order first,
   // then groups seen only in older years — so a group that is quiet this year
   // but active in a prior one keeps its own hue instead of collapsing to gray.
@@ -421,6 +748,8 @@ function groupVar(name){
   const a = GROUP_COLOR[name];
   if(a == null || a === "other") return {mark:"var(--gother)", fill:"var(--gother-fill)", on:"var(--gother-on)"};
   if(typeof a === "number") return {mark:"var(--g"+a+")", fill:"var(--g"+a+"-fill)", on:"var(--g"+a+"-on)"};
+  if(a.charAt(0) === "u")                     // configured hex: derived --guN token set
+    return {mark:"var(--g"+a+")", fill:"var(--g"+a+"-fill)", on:"var(--g"+a+"-on)"};
   const k = a.slice(2);                       // cycled slot: lighter tint of --gK
   return {mark:"color-mix(in srgb, var(--g"+k+") 55%, var(--surface))", fill:"var(--g"+k+"-fill)", on:"var(--g"+k+"-on)"};
 }
@@ -1218,20 +1547,24 @@ render(boot.year, boot.scope);
 </script>"""
 
 
-def full_document(payload):
+def _body(payload, gc_json):
+    return BODY.replace("__DATA__", payload).replace("__GROUPCOLORS__", gc_json)
+
+
+def full_document(payload, gc_json, style):
     return (
         '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-        + TITLE + "\n" + DESC + "\n" + FONTS + "\n" + STYLE + "\n"
-        "</head>\n<body>\n" + BODY.replace("__DATA__", payload) + "\n</body>\n</html>\n"
+        + TITLE + "\n" + DESC + "\n" + FONTS + "\n" + style + "\n"
+        "</head>\n<body>\n" + _body(payload, gc_json) + "\n</body>\n</html>\n"
     )
 
 
-def fragment(payload):
+def fragment(payload, gc_json, style):
     # No <!DOCTYPE>/<html>/<head>/<body>: the Artifact publish skeleton supplies
     # those. Order: <title>, fonts, <style>, one outer wrapper, inline <script>.
-    return TITLE + "\n" + FONTS + "\n" + STYLE + "\n" + BODY.replace("__DATA__", payload) + "\n"
+    return TITLE + "\n" + FONTS + "\n" + style + "\n" + _body(payload, gc_json) + "\n"
 
 
 def main(argv=None):
@@ -1242,6 +1575,10 @@ def main(argv=None):
                     help="standalone HTML output path; the fragment is written alongside as *.artifact.html")
     ap.add_argument("--redact-private", action="store_true",
                     help="replace private repo names with <owner>/private-repo-N so the page can be shared publicly")
+    ap.add_argument("--group-color", action="append", default=[], metavar="NAME=VALUE",
+                    help="pin a group's colour to a palette slot (g1-g8) or a hex colour, "
+                         "e.g. --group-color example-org=g3 --group-color widgets-inc=#7a4fd0; "
+                         "repeatable, and overrides config group_colors at build time")
     args = ap.parse_args(argv)
 
     years = load_years(args.data_dir)
@@ -1250,14 +1587,22 @@ def main(argv=None):
         return 2
     if args.redact_private:
         years = redact_private(years)
+
+    def _warn(m):
+        print(f"group-colours: {m}", file=sys.stderr)
+    group_color_map, hex_tokens = resolve_group_colors(years, args.group_color, _warn)
+    gc_json = json.dumps(group_color_map, separators=(",", ":")).replace("</", "<\\/")
+    light_css, dark_css = _hex_token_css(hex_tokens)
+    style = STYLE.replace("/*__GC_LIGHT__*/", light_css).replace("/*__GC_DARK__*/", dark_css)
+
     payload = json.dumps(years, separators=(",", ":"), default=str).replace("</", "<\\/")
 
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    doc = full_document(payload)
+    doc = full_document(payload, gc_json, style)
     out.write_text(doc)
     frag_path = out.with_name(out.stem + ".artifact.html")
-    frag = fragment(payload)
+    frag = fragment(payload, gc_json, style)
     frag_path.write_text(frag)
     print(f"wrote {out} ({len(doc):,} bytes) and {frag_path} ({len(frag):,} bytes) with years {sorted(years)}")
     return 0

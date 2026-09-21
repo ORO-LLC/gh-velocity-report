@@ -46,7 +46,7 @@ except ImportError:  # pragma: no cover
     ZoneInfo = None
 
 HERE = pathlib.Path(__file__).resolve().parent
-TOOL_VERSION = "2.0.0"
+TOOL_VERSION = "2.1.0"
 DEFAULT_CACHE_ROOT = "~/.cache/velocity-report"
 GIT_TIMEOUT = 600
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -61,6 +61,44 @@ def log(*a):
 
 def load_config(path):
     return json.loads(pathlib.Path(path).read_text())
+
+
+GROUP_SLOT_RE = re.compile(r"^g[1-8]$")
+GROUP_HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+
+
+def validate_group_colors(cfg, warnings):
+    """Validate the optional config `group_colors` map (group name -> palette slot
+    `g1`..`g8` or a hex colour). Returns the validated map for meta.group_colors;
+    anything malformed is dropped with a warning rather than crashing. The neutral
+    catch-all `other` cannot be recoloured. Hex values are lowercased; slots are
+    kept verbatim. Contrast/derivation of hex values happens later, at build time."""
+    raw = cfg.get("group_colors")
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        warnings.append("config group_colors is not an object; ignoring it")
+        return {}
+    out = {}
+    for name, val in raw.items():
+        if not isinstance(name, str) or not name:
+            warnings.append(f"group_colors: ignoring non-string group key {name!r}")
+            continue
+        if name == "other":
+            warnings.append("group_colors: 'other' is neutral and cannot be recoloured; ignoring it")
+            continue
+        if not isinstance(val, str):
+            warnings.append(f"group_colors: ignoring non-string value for group {name!r}")
+            continue
+        v = val.strip()
+        if GROUP_SLOT_RE.match(v):
+            out[name] = v
+        elif GROUP_HEX_RE.match(v):
+            out[name] = v.lower()
+        else:
+            warnings.append(f"group_colors: group {name!r} value {val!r} is not a palette "
+                            f"slot (g1-g8) or hex colour; ignoring it")
+    return out
 
 
 def default_persona_name(cfg):
@@ -1439,6 +1477,8 @@ def main(argv=None):
     if not persona_names:
         persona_names = {default_persona}
 
+    group_colors = validate_group_colors(cfg, warnings)
+
     meta = {
         "year": year,
         "display_name": cfg.get("display_name") or None,
@@ -1462,6 +1502,7 @@ def main(argv=None):
         "self_reviews_excluded": all_totals.get("self_reviews_excluded", 0),
         "discovered_emails": [{"email": e, "commits": n, "persona": discovered_persona.get(e)}
                               for e, n in discovered.most_common()],
+        "group_colors": group_colors,
         "warnings": warnings,
     }
     result = {"meta": meta, "scopes": scopes}

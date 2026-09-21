@@ -131,6 +131,7 @@ def build_config(accounts):
         "display_name": "Me",
         "identities": {"logins": logins, "emails": emails},
         "orgs": orgs,
+        "group_colors": {},
         "personal_owners": list(logins),
         "gh_accounts": list(logins),
         "exclude_repos": [],

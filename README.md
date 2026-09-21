@@ -127,6 +127,9 @@ the group everywhere it appears — scope chips, legends, the stacked monthly ba
 the org and repo tables, and the treemap — and when a single group is selected it
 becomes the page accent (section rules, sparklines and the calendar/heatmap ramp).
 
+To pin a group's colour, set `group_colors` in `config.json` (or pass
+`--group-color NAME=VALUE` to `build.py`); see the config reference below.
+
 ## What is counted, and how
 
 - **Combined accounts.** One scorecard across every login and commit identity you
@@ -177,7 +180,9 @@ re-run to fill them in.
   `$VELOCITY_CACHE_DIR`; default `~/.cache/velocity-report`.
 - `--refresh` — bypass the API response cache.
 
-`build.py` flags: `--data-dir`, `--out`, and `--redact-private` (see Privacy).
+`build.py` flags: `--data-dir`, `--out`, `--redact-private` (see Privacy), and
+`--group-color NAME=VALUE` (repeatable) to pin a group's colour at build time
+without re-collecting — it overrides `config.group_colors` for that build.
 
 ## Privacy
 
@@ -208,6 +213,7 @@ git-ignored and user-local.
 | `identities.emails` | Commit author emails that are "you". Auto-expanded with each login's `<id>+<login>@` and `<login>@users.noreply.github.com`. |
 | `identities.personas` | Optional map grouping logins/emails into named people. Omit to fold everything into one persona. |
 | `orgs` | Orgs whose repos are all in scope. |
+| `group_colors` | Optional map from a group name (org login or personal owner) to its colour: a palette slot `g1`–`g8`, or a hex colour (`#rgb` or `#rrggbb`). Listed groups take that colour; the rest keep the automatic slots, skipping any an explicit slot took. A hex value's fill, on-fill text and dark-theme variant are derived to meet WCAG contrast in both themes (on-fill text ≥ 4.5:1, marks ≥ 3:1 against the surface); a value that cannot, or that is malformed, is dropped with a warning and falls back to the automatic slot. The neutral `other` group cannot be recoloured. |
 | `personal_owners` | Logins whose owned repos are in scope. |
 | `gh_accounts` | Logged-in gh accounts, in preference order for reading private repos. |
 | `exclude_repos` | `owner/name` entries to skip entirely. |
@@ -215,7 +221,7 @@ git-ignored and user-local.
 | `timezone` | IANA timezone for weekday/hour/day bucketing and streaks. |
 | `classification` | `doc_ext`, `doc_dirs`, `excluded_dirs`, `excluded_ext`, `lockfiles`. |
 
-## Output JSON schema (`data/<year>.json`, tool_version 2.0.0)
+## Output JSON schema (`data/<year>.json`, tool_version 2.1.0)
 
 ```
 meta      year, display_name, generated_at, through, timezone, tool_version,
@@ -224,7 +230,8 @@ meta      year, display_name, generated_at, through, timezone, tool_version,
           repos_discovered / repos_candidates / repos_scanned_for_commits /
           repos_with_activity, prior_year_present, runtime_seconds,
           search_calls, self_reviews_excluded,
-          discovered_emails [{email, commits, persona}], warnings []
+          discovered_emails [{email, commits, persona}],
+          group_colors {group: "g1".."g8" | "#hex"}, warnings []
 scopes    object keyed by scope id. "all" is the combined scorecard; every
           org/owner group with activity (and "other") is its own scope,
           recomputed from only that group's repos. Each scope block has:

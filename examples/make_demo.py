@@ -203,6 +203,9 @@ def build_meta(cfg, year, through, scopes, default_persona, login_persona):
         "runtime_seconds": 12.3,
         "search_calls": 128,
         "self_reviews_excluded": scopes["all"]["totals"].get("self_reviews_excluded", 0),
+        # One explicit hex and one explicit palette slot so configured group
+        # colours are visible in the demo (widgets-inc appears in 2025 only).
+        "group_colors": {"widgets-inc": "#b5179e", "globex": "g6"},
         "discovered_emails": [{"email": "octocat@users.noreply.github.com", "commits": 7, "persona": "Octocat"}],
         "warnings": ["search failed [is:pr author:robocat created:%d-05-01..%d-05-31]: transient 502; re-run to fill it in"
                      % (year, year)],
