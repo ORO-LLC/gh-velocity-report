@@ -960,7 +960,11 @@ function treemapSection(d){
       rr.addEventListener("mouseleave",hideTip);
       s.append(rr);
       if(nd.w>58 && nd.h>24){
-        const lstyle="fill:#fff;stroke:rgba(0,0,0,.55);stroke-width:2.4px;paint-order:stroke";
+        // Labels are decorative: pointer-events:none lets the pointer fall
+        // through to the <rect> beneath (a sibling painted below), so hovering a
+        // block's name/value keeps the rect's tooltip up instead of firing its
+        // mouseleave.
+        const lstyle="fill:#fff;stroke:rgba(0,0,0,.55);stroke-width:2.4px;paint-order:stroke;pointer-events:none";
         const t1=svg("text",{x:nd.x+6,y:nd.y+16,"font-size":11,style:lstyle}); t1.textContent=clip(z.r.name||z.r.full_name, Math.floor((nd.w-10)/6.4)); s.append(t1);
         if(nd.h>40){ const t2=svg("text",{x:nd.x+6,y:nd.y+30,"font-size":10,style:lstyle}); t2.textContent=N(z.v); s.append(t2); }
       }

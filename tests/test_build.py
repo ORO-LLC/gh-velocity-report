@@ -87,6 +87,9 @@ class BuildSmoke(unittest.TestCase):
                 self.assertIn('const scopeAgg = z.r._agg!=null && scope!=="all";', text)
                 self.assertIn('groupVar(scope).mark+" 42%, var(--surface))"', text)
                 self.assertIn('groupVar(grp).mark+" "+pct+"%, var(--surface))"', text)
+                # treemap labels don't steal pointer events from the rect, so
+                # hovering a block's name keeps its tooltip visible
+                self.assertIn("paint-order:stroke;pointer-events:none", text)
 
     def test_control_row_pins_with_env_top_and_opaque_bg(self):
         # The compact control row (year tabs + scope chips) pins to the top while
