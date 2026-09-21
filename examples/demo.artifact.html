@@ -346,10 +346,20 @@ function setAccent(scope){
 // Map each repo full_name -> its group, from the per-group scope blocks.
 function repoGroupMap(scopes){
   const m = {};
-  for(const g of Object.keys(scopes)){
-    if(g === "all") continue;
-    for(const r of (scopes[g].by_repo || [])) m[r.full_name] = g;
+  const groups = Object.keys(scopes).filter(g=>g!=="all");
+  if(groups.length){
+    for(const g of groups) for(const r of (scopes[g].by_repo || [])) m[r.full_name] = g;
+    return m;
   }
+  // Legacy files (no per-group `scopes`) carry only the flat "all" block, so
+  // derive each repo's group the way the collector's group_for() does: a repo
+  // whose owner is a recognised org/owner group (it appears in by_org) keeps
+  // that owner as its group; every other owner collapses to "other". Without
+  // this the owner-fallback below would mislabel unconfigured repos by owner,
+  // contradicting the legend and the org table.
+  const all = scopes.all || {};
+  const recognised = new Set(((all.by_org)||[]).map(o=>o.group).filter(g=>g && g!=="other"));
+  for(const r of (all.by_repo||[])) m[r.full_name] = recognised.has(r.owner) ? r.owner : "other";
   return m;
 }
 // ---- sparkline (V2): 12-pt line + soft area + emphasised end dot ----------
@@ -827,7 +837,7 @@ function treemapSection(d){
   const METRICS=[["commits","Commits",r=>r.commits||0],["lines","Code lines Δ",r=>(r.code_add||0)+(r.code_del||0)]];
   let metric=METRICS[0];
   const box=el("div",{class:"treemap"});
-  const groupOf=r=> r._agg!=null? "other" : (CUR_RGM[r.full_name]||r.owner);
+  const groupOf=r=> r._agg!=null? "other" : (CUR_RGM[r.full_name]||"other");
   function rows(){
     let rs=d.by_repo.map(r=>({r, v:metric[2](r)})).filter(z=>z.v>0).sort((a,b)=>b.v-a.v);
     if(rs.length>40){ const top=rs.slice(0,40), rest=rs.slice(40), sum=rest.reduce((a,z)=>a+z.v,0);
@@ -908,7 +918,7 @@ function sortKey(r,k){
   return r[k];
 }
 function repoLink(r){
-  const grp=CUR_RGM[r.full_name] || r.owner;
+  const grp=CUR_RGM[r.full_name] || "other";
   const a=el("a",{href:"https://github.com/"+r.full_name,target:"_blank",rel:"noopener"}, r.full_name);
   const gv=groupVar(grp);
   const wrap=el("span",null, groupDot(grp,"rowdot"), a,
@@ -939,7 +949,7 @@ function repoSection(d){
     const tb=el("tbody");
     for(const r of rows){ const tr=el("tr");
       for(const [key,label,cls,fn] of REPO_COLS) tr.append(el("td",{class:cls||""}, fn(r)));
-      tr.append(el("td",{class:"l"}, barCell(r.commits,maxC, groupVar(CUR_RGM[r.full_name]||r.owner).mark)));
+      tr.append(el("td",{class:"l"}, barCell(r.commits,maxC, groupVar(CUR_RGM[r.full_name]||"other").mark)));
       tb.append(tr);
     }
     tbl.append(tb); tblwrap.innerHTML=""; tblwrap.append(tbl);

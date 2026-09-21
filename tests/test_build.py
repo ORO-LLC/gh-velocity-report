@@ -181,6 +181,12 @@ class BuildSmoke(unittest.TestCase):
             self.assertTrue(out.exists())
             self.assertIn('id="scope"', doc)
             self.assertIn("2099", doc)
+            # legacy files derive repo groups from the "all" block; unconfigured
+            # owners collapse to "other" instead of the owner-fallback that
+            # mislabels them (repoGroupMap legacy branch; group-of falls back to
+            # "other", never r.owner).
+            self.assertIn("recognised.has(r.owner)", doc)
+            self.assertNotIn("||r.owner", doc.replace(" ", ""))
 
 
 if __name__ == "__main__":
