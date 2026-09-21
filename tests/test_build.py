@@ -113,6 +113,31 @@ class BuildSmoke(unittest.TestCase):
                 # anchored sections clear the pinned bar on deep-link scroll
                 self.assertIn("scroll-margin-top: calc(env(safe-area-inset-top, 0px)", text)
 
+    def test_sparkline_end_dot_is_css_overlay_and_dead_rule_gone(self):
+        # #2: the sparkline end dot is a CSS-positioned overlay (round at any tile
+        # width under preserveAspectRatio="none"), not an in-SVG <circle> that the
+        # non-uniform x-scale would stretch. #4: the dead `.tile .v.lead-num` rule
+        # is removed.
+        import pathlib
+        with tempfile.TemporaryDirectory() as td:
+            td = pathlib.Path(td)
+            data_dir = td / "data"
+            data_dir.mkdir()
+            write_demo(data_dir)
+            out = td / "out" / "velocity.html"
+            self.assertEqual(build.main(["--data-dir", str(data_dir), "--out", str(out)]), 0)
+            doc = out.read_text()
+            frag = out.with_name("velocity.artifact.html").read_text()
+            for text in (doc, frag):
+                # #2 — CSS overlay dot + relative wrapper in the stylesheet,
+                # emitted by the sparkline builder in the inline script
+                self.assertIn(".spark-dot {", text)
+                self.assertIn(".spark-wrap {", text)
+                self.assertIn('class:"spark-dot"', text)
+                self.assertIn('el("span",{class:"spark-wrap"}', text)
+                # #4 — dead rule gone
+                self.assertNotIn("lead-num", text)
+
     def test_redact_private_removes_private_names(self):
         import pathlib
         with tempfile.TemporaryDirectory() as td:

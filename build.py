@@ -319,8 +319,14 @@ footer { font-size: 12.5px; color: var(--muted); text-align: center; }
 .pill.up { color: var(--good); background: color-mix(in srgb, var(--good) 15%, var(--surface)); }
 .pill.down { color: var(--bad); background: color-mix(in srgb, var(--bad) 15%, var(--surface)); }
 .pill.flat { color: var(--muted); background: var(--rule-soft); }
-.tile .v.lead-num { font-size: 26px; }
-.spark { display: block; width: 100%; height: 30px; margin-top: 3px; overflow: visible; }
+.spark-wrap { position: relative; display: block; margin-top: 3px; line-height: 0; }
+.spark { display: block; width: 100%; height: 30px; overflow: visible; }
+/* End-of-series marker: a CSS-positioned dot overlaid on the sparkline, placed
+   from the last point's normalized x/y. Drawn outside the SVG because the SVG
+   stretches non-uniformly (preserveAspectRatio="none") to fill the tile width,
+   which squashes an in-SVG <circle> into an ellipse; a CSS dot stays round at
+   every tile width and in both themes. */
+.spark-dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); pointer-events: none; }
 /* segmented control (metric / size toggles) */
 .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px; flex: none; }
 .seg button { font: inherit; font-family: var(--mono); font-size: 12px; font-weight: 500; cursor: pointer; border: 0; background: transparent; color: var(--ink-2); padding: 4px 11px; border-radius: 6px; line-height: 1.3; white-space: nowrap; }
@@ -453,9 +459,13 @@ function sparkline(vals, label){
   const area = "M"+pts[0][0].toFixed(1)+" "+(H-pad)+" " + pts.map(p=>"L"+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ") + " L"+pts[n-1][0].toFixed(1)+" "+(H-pad)+" Z";
   s.append(svg("path",{d:area,fill:"color-mix(in srgb, var(--accent) 16%, transparent)",stroke:"none"}));
   s.append(svg("path",{d:line,fill:"none",stroke:"var(--accent)","stroke-width":1.5,"stroke-linejoin":"round","stroke-linecap":"round","vector-effect":"non-scaling-stroke"}));
+  // Emphasised end dot as a CSS overlay positioned from the last point's
+  // normalized x/y, so it stays round under the sparkline's non-uniform x-scale
+  // (an in-SVG circle would render as a stretched ellipse). See .spark-dot.
   const last = pts[n-1];
-  s.append(svg("circle",{cx:last[0].toFixed(1),cy:last[1].toFixed(1),r:2.6,fill:"var(--accent)"}));
-  return s;
+  const dot = el("span",{class:"spark-dot",
+    style:"left:"+(last[0]/W*100).toFixed(2)+"%;top:"+(last[1]/H*100).toFixed(2)+"%"});
+  return el("span",{class:"spark-wrap"}, s, dot);
 }
 // same-elapsed-period prior-year sum for YoY deltas (V3)
 function priorSum(scope, year, field, uptoMonth){
@@ -655,7 +665,13 @@ function leadsSection(d){
   // without this scope; or prior year with this scope but no completed month yet.
   // Numeral, pill and caption name one window in every case.
   const basis = (scope!=="all"? "scope: "+scope+" · " : "")
-    + (compared && wlabel ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
+    + (compared && wlabel
+         // "vs prior year" only covers the clauses actually compared: when the
+         // prior snapshot reaches the current day (adPrior set) both counts and
+         // active days are compared; a partial prior snapshot compares counts
+         // only, so active days is stated without the comparison claim.
+         ? (adPrior!=null ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
+                          : "counts "+wlabel+" vs prior year · active days through "+m.through)
        : !havePriorYear ? "no prior year loaded"
        : !priorBlk ? "new scope · no prior-year comparison"
        : "YTD through "+m.through+" · no completed months to compare yet");
