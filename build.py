@@ -755,7 +755,11 @@ const MONTH_COLS=[
 
 function niceNum(x, round){ if(x<=0) return 1; const exp=Math.floor(Math.log10(x)); const f=x/Math.pow(10,exp);
   const nf = round ? (f<1.5?1: f<3?2: f<7?5:10) : (f<=1?1: f<=2?2: f<=5?5:10); return nf*Math.pow(10,exp); }
-function axisTicks(max){ if(max<=0) return {max:1,ticks:[0,1]}; const range=niceNum(max,false); const step=niceNum(range/4,true);
+function axisTicks(max){ if(max<=0) return {max:1,ticks:[0,1]}; const range=niceNum(max,false);
+  // These axes count whole events (commits / PRs / issues), so the step is at
+  // least 1 — otherwise a low peak (max 1 or 2) yields a sub-unit step whose
+  // ticks round to repeated integers (e.g. [0,0,0,1,1,1]) at distinct gridlines.
+  const step=Math.max(1, niceNum(range/4,true));
   const nmax=Math.ceil(max/step)*step; const t=[]; for(let v=0; v<=nmax+1e-9; v+=step) t.push(Math.round(v)); return {max:nmax,ticks:t}; }
 
 function monthlySection(d){

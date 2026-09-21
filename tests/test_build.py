@@ -76,6 +76,11 @@ class BuildSmoke(unittest.TestCase):
             self.assertIn("--g8: #e34948", doc)          # full 8-hue palette present
             self.assertEqual(doc.count("--gother: #8b95a1"), 2)
 
+            # count-axis step is clamped to >= 1 so a low peak (max 1/2) cannot
+            # produce duplicate integer tick labels at distinct gridlines
+            self.assertIn("Math.max(1, niceNum(range/4,true))", doc)
+            self.assertIn("Math.max(1, niceNum(range/4,true))", fragment)
+
     def test_control_row_pins_with_env_top_and_opaque_bg(self):
         # The compact control row (year tabs + scope chips) pins to the top while
         # scrolling: sticky, offset by the safe-area inset (env()), with an opaque
