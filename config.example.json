@@ -5,6 +5,10 @@
     "emails": ["mona@example.com", "octocat@users.noreply.github.com"]
   },
   "orgs": ["example-org"],
+  "group_colors": {
+    "example-org": "g3",
+    "widgets-inc": "#7a4fd0"
+  },
   "personal_owners": ["octocat", "octocat-work"],
   "gh_accounts": ["octocat", "octocat-work"],
   "exclude_repos": [],
