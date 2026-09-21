@@ -81,6 +81,13 @@ class BuildSmoke(unittest.TestCase):
             self.assertIn("Math.max(1, niceNum(range/4,true))", doc)
             self.assertIn("Math.max(1, niceNum(range/4,true))", fragment)
 
+            # treemap >40-repo overflow bucket: neutral "other" hue in the all
+            # scope, the selected group's hue (42% tint) in a single-group scope
+            for text in (doc, fragment):
+                self.assertIn('const scopeAgg = z.r._agg!=null && scope!=="all";', text)
+                self.assertIn('groupVar(scope).mark+" 42%, var(--surface))"', text)
+                self.assertIn('groupVar(grp).mark+" "+pct+"%, var(--surface))"', text)
+
     def test_control_row_pins_with_env_top_and_opaque_bg(self):
         # The compact control row (year tabs + scope chips) pins to the top while
         # scrolling: sticky, offset by the safe-area inset (env()), with an opaque

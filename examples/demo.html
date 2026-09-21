@@ -849,6 +849,7 @@ function treemapSection(d){
   const METRICS=[["commits","Commits",r=>r.commits||0],["lines","Code lines Δ",r=>(r.code_add||0)+(r.code_del||0)]];
   let metric=METRICS[0];
   const box=el("div",{class:"treemap"});
+  const scope=d._scope;
   const groupOf=r=> r._agg!=null? "other" : (CUR_RGM[r.full_name]||"other");
   function rows(){
     let rs=d.by_repo.map(r=>({r, v:metric[2](r)})).filter(z=>z.v>0).sort((a,b)=>b.v-a.v);
@@ -862,7 +863,14 @@ function treemapSection(d){
     const s=svg("svg",{viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Repositories sized by "+metric[1]});
     laid.forEach((nd,idx)=>{
       const z=nd.d, grp=groupOf(z.r), pct=100-(idx%4)*7;
-      const fill="color-mix(in srgb, "+groupVar(grp).mark+" "+pct+"%, var(--surface))";
+      // The >40-repo overflow bucket: in a single group scope every collapsed
+      // repo belongs to that group, so tint the block with the scope's hue (a
+      // light mix so it still reads as an aggregate, not one repo); the combined
+      // "all" view keeps the neutral "other" colour. Label/tooltip stay on grp.
+      const scopeAgg = z.r._agg!=null && scope!=="all";
+      const fill = scopeAgg
+        ? "color-mix(in srgb, "+groupVar(scope).mark+" 42%, var(--surface))"
+        : "color-mix(in srgb, "+groupVar(grp).mark+" "+pct+"%, var(--surface))";
       const rr=svg("rect",{x:nd.x+0.75,y:nd.y+0.75,width:Math.max(0,nd.w-1.5),height:Math.max(0,nd.h-1.5),fill,rx:2});
       rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${esc(z.r.full_name)}</b><br>${esc(grp)}<br>${metric[1]}: ${N(z.v)}${z.r._agg!=null?" ("+z.r._agg+" repos)":""}`));
       rr.addEventListener("mouseleave",hideTip);
