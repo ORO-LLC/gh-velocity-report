@@ -9,6 +9,16 @@ GitHub's own contribution graph undercounts when it is spread across several
 logins and emails. Everything runs locally against your own `gh` login; nothing
 is written to GitHub and nothing leaves your machine.
 
+The page opens with four headline tiles (commits, PRs merged, issues closed,
+active days), each carrying a same-period year-over-year delta, above a compact
+grid of every other counter with a per-month sparkline. Below it: a monthly
+activity chart (stacked by org/owner group, with a commits / PRs / issues
+toggle), a contribution calendar that outlines your longest streak and rings the
+busiest day, a treemap of where the year's commits went (or code lines changed),
+the per-weekday/hour rhythm grid with the working-hours band highlighted, and the
+full per-org, per-repo and per-account tables. Every section re-renders when you
+switch year or scope.
+
 There is a rendered example page (fully synthetic data) at
 [`examples/demo.html`](examples/demo.html) — open it in a browser to see what the
 report looks like.
@@ -109,6 +119,13 @@ recomputes every section — totals, streaks, active days, cycle time, ratios an
 insights — from only that group's repositories. The selection deep-links as
 `#2026/example-org` (a bare `#2026` selects `All`) and persists across year
 switches when that group exists in the target year.
+
+Each group gets a fixed colour from a validated categorical palette, assigned in
+the newest year's descending commit order (the catch-all "other" group always
+takes a neutral grey) and held stable across years and scopes; that colour marks
+the group everywhere it appears — scope chips, legends, the stacked monthly bars,
+the org and repo tables, and the treemap — and when a single group is selected it
+becomes the page accent (section rules, sparklines and the calendar/heatmap ramp).
 
 ## What is counted, and how
 

@@ -103,18 +103,44 @@ STYLE = r"""<style>
   --muted: #6b7684;
   --rule: #dde3ea;
   --rule-soft: #eaeef3;
-  --accent: #2a78d6;
-  --accent-soft: #e8f1fc;
+  --link: #2166bf;
+  --brand: #2a78d6;
+  --brand-fill: #2771c9;
+  --brand-on: #ffffff;
+  /* --accent is the live page accent: brand blue in All, the group hue in a
+     single scope (set inline on the root element as a var() reference so it
+     stays theme-aware). Rules, swatches, the heat ramp and selected fills
+     follow it; links use --link so they stay readable whatever the hue. */
+  --accent: var(--brand);
+  --accent-fill: var(--brand-fill);
+  --accent-on: var(--brand-on);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --good: #0ca30c;
+  --bad: #d03b3b;
   --s1: #2a78d6;
   --s2: #eb6834;
   --s3: #1baf7a;
+  /* Categorical group palette (dataviz reference theme, validated light+dark).
+     hue = marks/dots/bars; -fill/-on = accessible selected-chip fill + text. */
+  --g1: #2a78d6; --g1-fill: #2771c9; --g1-on: #ffffff;
+  --g2: #eb6834; --g2-fill: #eb6834; --g2-on: #12181f;
+  --g3: #1baf7a; --g3-fill: #1baf7a; --g3-on: #12181f;
+  --g4: #eda100; --g4-fill: #eda100; --g4-on: #12181f;
+  --g5: #e87ba4; --g5-fill: #e87ba4; --g5-on: #12181f;
+  --g6: #008300; --g6-fill: #008300; --g6-on: #ffffff;
+  --g7: #4a3aa7; --g7-fill: #4a3aa7; --g7-on: #ffffff;
+  --g8: #e34948; --g8-fill: #e55453; --g8-on: #12181f;
+  --gother: #78838f; --gother-fill: #59626d; --gother-on: #ffffff;
+  /* Heat ramp derived from --accent: base = surface, top = a neutral dark so
+     "more" darkens (light) / brightens (dark). Recomputes per theme + scope. */
+  --heat-base: #eef2f6;
+  --heat-top: #0e1a2b;
   --heat0: #eef2f6;
-  --heat1: #cde2fb;
-  --heat2: #86b6ef;
-  --heat3: #3987e5;
-  --heat4: #256abf;
-  --heat5: #104281;
-  --good: #0ca30c;
+  --heat1: color-mix(in srgb, var(--accent) 20%, var(--heat-base));
+  --heat2: color-mix(in srgb, var(--accent) 42%, var(--heat-base));
+  --heat3: color-mix(in srgb, var(--accent) 68%, var(--heat-base));
+  --heat4: color-mix(in srgb, var(--accent) 84%, var(--heat-top));
+  --heat5: color-mix(in srgb, var(--accent) 58%, var(--heat-top));
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -128,18 +154,27 @@ STYLE = r"""<style>
     --muted: #8592a1;
     --rule: #263140;
     --rule-soft: #1b232e;
-    --accent: #4d94e8;
-    --accent-soft: #14273d;
+    --link: #6aa8ee;
+    --brand: #4d94e8;
+    --brand-fill: #2f6fc4;
+    --brand-on: #ffffff;
+    --good: #0ca30c;
+    --bad: #e66767;
     --s1: #3987e5;
     --s2: #d95926;
     --s3: #199e70;
+    --g1: #3987e5; --g1-fill: #3987e5; --g1-on: #0c1015;
+    --g2: #d95926; --g2-fill: #d95926; --g2-on: #0c1015;
+    --g3: #199e70; --g3-fill: #199e70; --g3-on: #0c1015;
+    --g4: #c98500; --g4-fill: #c98500; --g4-on: #0c1015;
+    --g5: #d55181; --g5-fill: #d55181; --g5-on: #0c1015;
+    --g6: #008300; --g6-fill: #008300; --g6-on: #ffffff;
+    --g7: #9085e9; --g7-fill: #9085e9; --g7-on: #0c1015;
+    --g8: #e66767; --g8-fill: #e66767; --g8-on: #0c1015;
+    --gother: #8b95a1; --gother-fill: #8b95a1; --gother-on: #0c1015;
+    --heat-base: #1b232e;
+    --heat-top: #eaf1fb;
     --heat0: #1b232e;
-    --heat1: #14345c;
-    --heat2: #1c5cab;
-    --heat3: #2a78d6;
-    --heat4: #5598e7;
-    --heat5: #9ec5f4;
-    --good: #0ca30c;
   }
 }
 :root[data-theme="dark"] {
@@ -151,18 +186,27 @@ STYLE = r"""<style>
   --muted: #8592a1;
   --rule: #263140;
   --rule-soft: #1b232e;
-  --accent: #4d94e8;
-  --accent-soft: #14273d;
+  --link: #6aa8ee;
+  --brand: #4d94e8;
+  --brand-fill: #2f6fc4;
+  --brand-on: #ffffff;
+  --good: #0ca30c;
+  --bad: #e66767;
   --s1: #3987e5;
   --s2: #d95926;
   --s3: #199e70;
+  --g1: #3987e5; --g1-fill: #3987e5; --g1-on: #0c1015;
+  --g2: #d95926; --g2-fill: #d95926; --g2-on: #0c1015;
+  --g3: #199e70; --g3-fill: #199e70; --g3-on: #0c1015;
+  --g4: #c98500; --g4-fill: #c98500; --g4-on: #0c1015;
+  --g5: #d55181; --g5-fill: #d55181; --g5-on: #0c1015;
+  --g6: #008300; --g6-fill: #008300; --g6-on: #ffffff;
+  --g7: #9085e9; --g7-fill: #9085e9; --g7-on: #0c1015;
+  --g8: #e66767; --g8-fill: #e66767; --g8-on: #0c1015;
+  --gother: #8b95a1; --gother-fill: #8b95a1; --gother-on: #0c1015;
+  --heat-base: #1b232e;
+  --heat-top: #eaf1fb;
   --heat0: #1b232e;
-  --heat1: #14345c;
-  --heat2: #1c5cab;
-  --heat3: #2a78d6;
-  --heat4: #5598e7;
-  --heat5: #9ec5f4;
-  --good: #0ca30c;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -174,18 +218,20 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-.wrap { max-width: 1140px; margin: 0 auto; display: grid; gap: 26px; padding-inline: 16px; padding-block: 28px 56px; }
-a { color: var(--accent); text-decoration: none; }
+.wrap { max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; padding-inline: 16px; padding-block: 28px 56px; }
+main, section.card { min-width: 0; }
+a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 h1 { font-size: 30px; line-height: 1.1; font-weight: 700; margin: 0; letter-spacing: -.02em; text-wrap: balance; }
-h2 { font-size: 15px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+h2 { font-size: 15px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); padding-left: 10px; border-left: 3px solid var(--accent); line-height: 1.15; }
 .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 header { display: grid; gap: 12px; }
 .controls {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
   background: var(--plane); display: flex; flex-wrap: wrap; gap: 10px 14px;
-  align-items: center; padding: 8px 0; max-width: 100%;
+  align-items: center; padding: 8px 0; max-width: 100%; min-width: 0;
+  border-bottom: 1px solid var(--rule);
 }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .facts b { color: var(--ink); font-weight: 500; }
@@ -195,20 +241,22 @@ header { display: grid; gap: 12px; }
   font: inherit; font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer;
   border: 0; background: transparent; color: var(--ink-2); padding: 6px 16px; border-radius: 999px; line-height: 1.4;
 }
-.tabs button[aria-selected="true"] { background: var(--accent); color: #fff; }
+.tabs button[aria-selected="true"] { background: var(--accent-fill); color: var(--accent-on); }
 .scope {
   display: flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--rule);
-  border-radius: 999px; overflow-x: auto; max-width: 100%; scrollbar-width: thin; -webkit-overflow-scrolling: touch;
+  border-radius: 999px; overflow-x: auto; max-width: 100%; min-width: 0; scrollbar-width: thin; -webkit-overflow-scrolling: touch;
 }
 .scope button {
   font: inherit; font-family: var(--mono); font-size: 12px; font-weight: 500; cursor: pointer; border: 0;
   background: transparent; color: var(--ink-2); padding: 5px 12px; border-radius: 999px; line-height: 1.3;
   white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; flex: none;
 }
-.scope button[aria-selected="true"] { background: var(--accent); color: #fff; }
+.scope button[aria-selected="true"] { background: var(--accent-fill); color: var(--accent-on); }
 .scope .scope-n { font-size: 10.5px; opacity: .65; font-variant-numeric: tabular-nums; }
 .scope button[aria-selected="true"] .scope-n { opacity: .85; }
-section.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; display: grid; gap: 16px; }
+.scope .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset; }
+.scope button[aria-selected="true"] .dot { box-shadow: 0 0 0 1px rgba(255,255,255,.35) inset; }
+section.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; display: grid; gap: 16px; scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 56px); }
 .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; justify-content: space-between; }
 .sec-head .hint { font-size: 12.5px; color: var(--muted); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
@@ -255,11 +303,52 @@ input[type="search"] { font: inherit; font-size: 13px; padding: 6px 11px; border
 .notes-grid dd { margin: 2px 0 0; color: var(--muted); }
 footer { font-size: 12.5px; color: var(--muted); text-align: center; }
 .tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--surface); font-family: var(--mono); font-size: 11.5px; padding: 5px 8px; border-radius: 6px; opacity: 0; transition: opacity .08s; max-width: 260px; }
+/* group legend strip under the header */
+.grouplegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); align-items: center; }
+.grouplegend .gl { display: inline-flex; align-items: center; gap: 6px; }
+.grouplegend .gl-c { font-variant-numeric: tabular-nums; color: var(--muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+/* lead tile row */
+.leads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.lead { padding: 15px 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface-2); display: grid; gap: 7px; align-content: start; }
+.lead .k { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.lead .r { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.lead .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.lead .s { font-size: 12px; color: var(--muted); }
+.pill { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill.up { color: var(--good); background: color-mix(in srgb, var(--good) 15%, var(--surface)); }
+.pill.down { color: var(--bad); background: color-mix(in srgb, var(--bad) 15%, var(--surface)); }
+.pill.flat { color: var(--muted); background: var(--rule-soft); }
+.spark-wrap { position: relative; display: block; margin-top: 3px; line-height: 0; }
+.spark { display: block; width: 100%; height: 30px; overflow: visible; }
+/* End-of-series marker: a CSS-positioned dot overlaid on the sparkline, placed
+   from the last point's normalized x/y. Drawn outside the SVG because the SVG
+   stretches non-uniformly (preserveAspectRatio="none") to fill the tile width,
+   which squashes an in-SVG <circle> into an ellipse; a CSS dot stays round at
+   every tile width and in both themes. */
+.spark-dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); pointer-events: none; }
+/* segmented control (metric / size toggles) */
+.seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px; flex: none; }
+.seg button { font: inherit; font-family: var(--mono); font-size: 12px; font-weight: 500; cursor: pointer; border: 0; background: transparent; color: var(--ink-2); padding: 4px 11px; border-radius: 6px; line-height: 1.3; white-space: nowrap; }
+.seg button[aria-selected="true"] { background: var(--accent-fill); color: var(--accent-on); }
+.obadge { font-family: var(--mono); font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+.rowdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; vertical-align: middle; }
+/* treemap + narrow fallback bar list */
+.treemap { width: 100%; }
+.tm-bars { display: grid; gap: 5px; }
+.tm-bar { display: grid; grid-template-columns: minmax(84px, 32%) 1fr auto; gap: 9px; align-items: center; font-size: 12.5px; }
+.tm-bar .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-bar .track { height: 12px; border-radius: 3px; background: var(--rule-soft); overflow: hidden; }
+.tm-bar .fill { height: 100%; border-radius: 3px; }
+.tm-bar .num { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.cap { font-size: 12.5px; color: var(--muted); }
 @media (max-width: 720px) {
   .wrap { padding-block: 20px 40px; }
   h1 { font-size: 25px; }
   section.card { padding: 16px 15px; }
   .two-col, .notes-grid { grid-template-columns: 1fr; }
+  .leads { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .lead .v { font-size: 26px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>"""
@@ -268,13 +357,14 @@ BODY = r"""<div class="wrap">
   <header>
     <div class="eyebrow" id="eyebrow">Personal velocity</div>
     <h1 id="title">Personal velocity</h1>
-    <div class="controls" id="controls">
-      <div class="tabs" id="tabs" role="tablist" aria-label="Year"></div>
-      <div class="scope" id="scope" role="tablist" aria-label="Scope (org or owner)"></div>
-    </div>
     <div class="facts" id="facts"></div>
+    <div class="grouplegend" id="grouplegend" aria-label="Group colours"></div>
     <div class="head-note" id="head-note"></div>
   </header>
+  <div class="controls" id="controls">
+    <div class="tabs" id="tabs" role="tablist" aria-label="Year"></div>
+    <div class="scope" id="scope" role="tablist" aria-label="Scope (org or owner)"></div>
+  </div>
   <main id="main"></main>
   <footer>
     Counts are read-only from GitHub. Line and commit counts come from git on each repo's default branch, merges excluded, bot commits excluded by identity matching. See "How these numbers are counted".
@@ -294,7 +384,154 @@ const el = (t, a, ...kids) => { const e=document.createElement(t); if(a) for(con
 const NS = "http://www.w3.org/2000/svg";
 const svg = (t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; };
 
+// ---- group colour identity (V1) -----------------------------------------
+// Deterministic hue per org/owner group, assigned by the all-scope by_org order
+// (commits descending) of the NEWEST year, then held stable across years and
+// scopes. The catch-all "other" group always takes the neutral colour; a group
+// past slot 8 cycles with a lighter tint of the reused slot.
+let GROUP_COLOR = {};
+let CUR_RGM = {};                    // full_name -> group, for the current year
+// Groups present for a year's scopes, in stable colour order. Falls back to the
+// all-block `by_org` ordering for legacy (no-`scopes`) files, which carry their
+// org breakdown at the top level rather than as scope keys.
+function groupsForScopes(scopes){
+  const gs = groupsOrdered(scopes);
+  if(gs.length) return gs;
+  return [...(((scopes.all||{}).by_org)||[])].sort((a,b)=>(b.commits||0)-(a.commits||0)).map(r=>r.group).filter(Boolean);
+}
+function computeGroupColors(){
+  // Union of groups across every loaded year, newest-year commit order first,
+  // then groups seen only in older years — so a group that is quiet this year
+  // but active in a prior one keeps its own hue instead of collapsing to gray.
+  const map = {};
+  let slot = 0;
+  const seen = new Set();
+  for(const y of [...YEARS].sort((a,b)=>b-a)){
+    for(const g of groupsForScopes(scopesOf(DATA[y]))){
+      if(seen.has(g)) continue;
+      seen.add(g);
+      if(g === "other"){ map[g] = "other"; continue; }
+      slot++;
+      map[g] = slot <= 8 ? slot : "cy" + (((slot - 1) % 8) + 1);
+    }
+  }
+  GROUP_COLOR = map;
+}
+function groupVar(name){
+  const a = GROUP_COLOR[name];
+  if(a == null || a === "other") return {mark:"var(--gother)", fill:"var(--gother-fill)", on:"var(--gother-on)"};
+  if(typeof a === "number") return {mark:"var(--g"+a+")", fill:"var(--g"+a+"-fill)", on:"var(--g"+a+"-on)"};
+  const k = a.slice(2);                       // cycled slot: lighter tint of --gK
+  return {mark:"color-mix(in srgb, var(--g"+k+") 55%, var(--surface))", fill:"var(--g"+k+"-fill)", on:"var(--g"+k+"-on)"};
+}
+function groupDot(name, cls){ return el("span",{class:cls||"dot",style:"background:"+groupVar(name).mark}); }
+// Switch the live page accent to the selected group's hue (theme-aware because
+// the value is a var() reference); All clears back to the brand default.
+function setAccent(scope){
+  const st = document.documentElement.style;
+  if(scope === "all"){ st.removeProperty("--accent"); st.removeProperty("--accent-fill"); st.removeProperty("--accent-on"); return; }
+  const g = groupVar(scope);
+  st.setProperty("--accent", g.mark);
+  st.setProperty("--accent-fill", g.fill);
+  st.setProperty("--accent-on", g.on);
+}
+// Map each repo full_name -> its group, from the per-group scope blocks.
+function repoGroupMap(scopes){
+  const m = {};
+  const groups = Object.keys(scopes).filter(g=>g!=="all");
+  if(groups.length){
+    for(const g of groups) for(const r of (scopes[g].by_repo || [])) m[r.full_name] = g;
+    return m;
+  }
+  // Legacy files (no per-group `scopes`) carry only the flat "all" block, so
+  // derive each repo's group the way the collector's group_for() does: a repo
+  // whose owner is a recognised org/owner group (it appears in by_org) keeps
+  // that owner as its group; every other owner collapses to "other". Without
+  // this the owner-fallback below would mislabel unconfigured repos by owner,
+  // contradicting the legend and the org table.
+  const all = scopes.all || {};
+  const recognised = new Set(((all.by_org)||[]).map(o=>o.group).filter(g=>g && g!=="other"));
+  for(const r of (all.by_repo||[])) m[r.full_name] = recognised.has(r.owner) ? r.owner : "other";
+  return m;
+}
+// ---- sparkline (V2): 12-pt line + soft area + emphasised end dot ----------
+function sparkline(vals, label){
+  const W = 150, H = 30, pad = 3;
+  const s = svg("svg",{class:"spark",viewBox:"0 0 "+W+" "+H,preserveAspectRatio:"none",role:"img"});
+  const ttl = document.createElementNS(NS,"title");
+  ttl.textContent = label + ": " + vals.map((v,i)=>MON[i]+" "+N(v)).join(", ");
+  s.append(ttl);
+  const max = Math.max(1, ...vals), n = vals.length;
+  const xx = i => n<2? W/2 : pad + i*(W-2*pad)/(n-1);
+  const yy = v => (H-pad) - v/max*(H-2*pad);
+  const pts = vals.map((v,i)=>[xx(i),yy(v)]);
+  const line = pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const area = "M"+pts[0][0].toFixed(1)+" "+(H-pad)+" " + pts.map(p=>"L"+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ") + " L"+pts[n-1][0].toFixed(1)+" "+(H-pad)+" Z";
+  s.append(svg("path",{d:area,fill:"color-mix(in srgb, var(--accent) 16%, transparent)",stroke:"none"}));
+  s.append(svg("path",{d:line,fill:"none",stroke:"var(--accent)","stroke-width":1.5,"stroke-linejoin":"round","stroke-linecap":"round","vector-effect":"non-scaling-stroke"}));
+  // Emphasised end dot as a CSS overlay positioned from the last point's
+  // normalized x/y, so it stays round under the sparkline's non-uniform x-scale
+  // (an in-SVG circle would render as a stretched ellipse). See .spark-dot.
+  const last = pts[n-1];
+  const dot = el("span",{class:"spark-dot",
+    style:"left:"+(last[0]/W*100).toFixed(2)+"%;top:"+(last[1]/H*100).toFixed(2)+"%"});
+  return el("span",{class:"spark-wrap"}, s, dot);
+}
+// same-elapsed-period prior-year sum for YoY deltas (V3)
+function priorSum(scope, year, field, uptoMonth){
+  const py = DATA[year-1]; if(!py) return null;
+  const sc = scopesOf(py); const blk = sc[scope]; if(!blk) return null;
+  let t = 0; for(const x of blk.by_month){ if(x.month <= uptoMonth) t += (x[field]||0); }
+  return t;
+}
+function priorActiveDays(scope, year, through){
+  const py = DATA[year-1]; if(!py) return null;
+  const sc = scopesOf(py); const blk = sc[scope]; if(!blk || !blk.calendar) return null;
+  const md = (through||"").slice(5);            // "MM-DD"
+  if(!md) return null;
+  let c = 0;
+  for(const iso in blk.calendar){ if(iso.slice(5) <= md && (blk.calendar[iso].commits||0) > 0) c++; }
+  return c;
+}
+// whole months elapsed this year: the current month counts only once it is over,
+// so same-period deltas never weigh a partial month against a full prior one.
+function completedMonths(m){
+  const d=new Date((((m&&m.through))||"")+"T00:00:00");
+  if(!Number.isFinite(d.getTime())) return 0;          // unparseable through → no comparable window
+  const mo=d.getMonth()+1;
+  // The collector sets through = min(Dec 31, today), so a year is fully elapsed
+  // only when through reaches Dec 31; any earlier date is an as-of-today
+  // snapshot whose through-month is still in progress and does not count.
+  // A Dec-31 `through` is treated as a completed year by definition: the emitted
+  // JSON cannot distinguish a completed historical year from a live snapshot
+  // taken on Dec 31 (make_demo sets generated_at to Dec 31 of the data year), so
+  // the once-a-year Dec-31 live case carries at most a sub-day bias.
+  return (mo===12 && d.getDate()===31) ? 12 : mo-1;
+}
+// current-year sum of a field over months up to (and including) uptoMonth
+function curSum(d, field, uptoMonth){ let t=0; for(const x of (d.by_month||[])){ if(x.month<=uptoMonth) t+=(x[field]||0); } return t; }
+// completed months the prior-year snapshot covers (a full past year → 12; null = no prior year)
+function priorCompletedMonths(year){ const py=DATA[year-1]; return py? completedMonths(py.meta||{}) : null; }
+// does the prior-year snapshot reach at least the same calendar day (MM-DD)?
+function priorCoversMD(year, through){ const py=DATA[year-1]; if(!py||!py.meta||!py.meta.through) return false; return py.meta.through.slice(5) >= (through||"").slice(5); }
+function deltaPill(cur, prior){
+  if(prior == null) return null;
+  const diff = cur - prior;
+  if(prior === 0){
+    if(cur === 0) return null;                       // nothing either year — no pill
+    return el("span",{class:"pill up", title:"prior year same period: 0 (new activity)"}, "▲ ", "new");
+  }
+  const pct = diff/prior;
+  const cls = Math.abs(pct) <= 0.02 ? "flat" : (diff > 0 ? "up" : "down");
+  const arrow = cls==="up" ? "▲" : cls==="down" ? "▼" : "–";
+  const txt = (diff>0?"+":diff<0?"−":"±") + Math.round(Math.abs(pct)*100) + "%";
+  return el("span",{class:"pill "+cls, title:"prior year same period: "+N(prior)+" ("+signed(diff)+")"}, arrow+" ", txt);
+}
+
 const tip = document.getElementById("tip");
+// Escape repo/owner/group names before they enter the innerHTML tooltip sink.
+// GitHub names can't hold markup, but a hand-crafted third-party JSON could.
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function showTip(ev, html){ tip.innerHTML=html; tip.style.opacity=1; moveTip(ev); }
 function moveTip(ev){ const x=ev.clientX, y=ev.clientY; tip.style.left=Math.min(x+12, innerWidth-tip.offsetWidth-8)+"px"; tip.style.top=(y+16)+"px"; }
 function hideTip(){ tip.style.opacity=0; }
@@ -318,6 +555,7 @@ function buildScopeControl(scopes, active){
   const order=["all", ...groupsOrdered(scopes)];
   for(const s of order){
     const b=el("button",{type:"button",role:"tab","data-s":s,"aria-selected":String(s===active),"aria-label":(s==="all"?"All":s)+" scope"});
+    if(s!=="all") b.append(groupDot(s,"dot"));
     b.append(el("span",{class:"scope-l"}, s==="all"?"All":s));
     const c=((scopes[s]||{}).totals||{}).commits;
     b.append(el("span",{class:"scope-n"}, N(c==null?0:c)));
@@ -331,16 +569,20 @@ function render(year, scope){
   const scopes = scopesOf(d);
   if(!scope || !scopes[scope]) scope="all";
   current = {year, scope};
+  setAccent(scope);
+  CUR_RGM = repoGroupMap(scopes);
   const m = d.meta;
   const block = scopes[scope];
   const view = Object.assign({meta:m}, block);
   view.by_org = (scopes.all||{}).by_org || block.by_org || [];
   view._scope = scope;
+  view._scopes = scopes;
 
   document.getElementById("eyebrow").textContent = m.display_name || "Personal velocity";
   document.getElementById("title").textContent = "Personal velocity · " + year + (scope!=="all"? " · " + scope : "");
   for(const b of document.querySelectorAll("#tabs button")) b.setAttribute("aria-selected", String(Number(b.dataset.y)===year));
   buildScopeControl(scopes, scope);
+  buildGroupLegend(scopes, scope);
 
   const facts = document.getElementById("facts");
   facts.innerHTML = "";
@@ -355,9 +597,26 @@ function render(year, scope){
 
   const main = document.getElementById("main");
   main.innerHTML = "";
-  main.append(tilesSection(view), insightsSection(view), monthlySection(view), calendarSection(view),
-              orgSection(view), repoSection(view), rhythmSection(view), accountsSection(view),
+  main.append(leadsSection(view), tilesSection(view), insightsSection(view), monthlySection(view), calendarSection(view),
+              orgSection(view), treemapSection(view), repoSection(view), rhythmSection(view), accountsSection(view),
               contextSection(view), notesSection(view));
+}
+
+// Group legend strip under the header (V1): one swatch + name + commits per
+// group present this year, in stable colour order.
+function buildGroupLegend(scopes, active){
+  const cont = document.getElementById("grouplegend");
+  cont.innerHTML = "";
+  const groups = groupsForScopes(scopes);
+  if(!groups.length){ cont.append(el("span",{class:"gl-c"},"one group")); return; }
+  const byOrg = ((scopes.all||{}).by_org)||[];
+  const commitsOf = g => { const s=scopes[g]; if(s&&s.totals) return s.totals.commits||0; const r=byOrg.find(x=>x.group===g); return r? (r.commits||0):0; };
+  cont.append(el("span",{class:"gl-c",style:"letter-spacing:.08em"},"GROUPS"));
+  for(const g of groups){
+    const c = commitsOf(g);
+    cont.append(el("span",{class:"gl"+(g===active?" ":""),style:g===active?"color:var(--ink);font-weight:600":""},
+      groupDot(g), g, el("span",{class:"gl-c"}, N(c))));
+  }
 }
 
 function card(title, hint, ...body){
@@ -365,27 +624,97 @@ function card(title, hint, ...body){
   return el("section",{class:"card"}, head, ...body.filter(Boolean));
 }
 
+// Lead tile row (V3): four large headline tiles with same-period YoY delta pills.
+function leadsSection(d){
+  const t=d.totals, m=d.meta, scope=d._scope, year=m.year;
+  const cm=completedMonths(m);
+  const pcm=priorCompletedMonths(year);              // null = no prior year loaded
+  const hasPrior = pcm!=null && pcm>0 && cm>0;
+  // Count tiles compare the same whole-month window on both years (no prior
+  // day-grain exists for PRs/issues) — clamped to what the prior snapshot
+  // actually covers, so a partial prior file can't inflate the delta. When that
+  // scope has a real prior series the headline numeral IS the windowed value
+  // (so number, pill and caption name one period) and the YTD figure moves to
+  // the subtitle; with no comparison (no prior year, or a scope absent from the
+  // prior year) the numeral stays the full YTD and no pill or comparison
+  // wording is shown. Active days keeps its day-level prior slice, except when
+  // the scope exists in the prior year but no month has completed yet — then it
+  // drops the pill too so the card does not compare and deny in the same breath.
+  const win = hasPrior ? Math.min(cm, pcm) : cm;
+  const grid=el("div",{class:"leads"});
+  const counts=[
+    ["Commits","commits", t.commits, "default branch, merges excluded"],
+    ["PRs merged","prs_merged", t.prs_merged, N(t.prs_opened)+" opened in scope"],
+    ["Issues closed","issues_closed", t.issues_closed, N(t.issues_opened)+" opened"]
+  ];
+  let compared=false;   // did any count tile show a real prior comparison for this scope?
+  for(const [k,f,ytd,extra] of counts){
+    const prior = (hasPrior && win>0) ? priorSum(scope,year,f,win) : null;
+    const num = prior!=null ? curSum(d,f,win) : ytd;
+    const pill = prior!=null ? deltaPill(curSum(d,f,win), prior) : null;
+    if(prior!=null) compared=true;
+    const sub = ((prior!=null && win<12)? N(ytd)+" YTD through "+m.through+" · " : "") + extra;
+    grid.append(el("div",{class:"lead"}, el("div",{class:"k"},k),
+      el("div",{class:"r"}, el("div",{class:"v"}, N(num)), pill),
+      el("div",{class:"s"}, sub)));
+  }
+  const havePriorYear = DATA[year-1]!=null;
+  const priorBlk = havePriorYear ? (scopesOf(DATA[year-1])[scope] || null) : null;
+  // Prior year AND this scope both exist, but no completed-month window has
+  // elapsed yet (current year still in its first month, cm===0): the count
+  // tiles are YTD with no pill, so the active-days tile drops its day-slice pill
+  // too and the card names the single YTD window instead of claiming "new scope".
+  const noCompYet = priorBlk!=null && !compared;
+  const adPrior = (!noCompYet && priorCoversMD(year,m.through)) ? priorActiveDays(scope,year,m.through) : null;
+  grid.append(el("div",{class:"lead"}, el("div",{class:"k"},"Active days"),
+    el("div",{class:"r"}, el("div",{class:"v"}, N(t.active_days)), deltaPill(t.active_days, adPrior)),
+    el("div",{class:"s"}, (t.ratios&&t.ratios.commits_per_active_day!=null? N(t.ratios.commits_per_active_day)+" commits/day":"with ≥1 commit")+" · through "+m.through)));
+  const wlabel = win>0 ? MON[0]+"–"+MON[win-1] : null;   // completed-month window the counts cover
+  // Three no-comparison states get three distinct captions (never "new scope"
+  // for a scope that exists in the prior year): no prior year loaded; prior year
+  // without this scope; or prior year with this scope but no completed month yet.
+  // Numeral, pill and caption name one window in every case.
+  const basis = (scope!=="all"? "scope: "+scope+" · " : "")
+    + (compared && wlabel
+         // "vs prior year" only covers the clauses actually compared: when the
+         // prior snapshot reaches the current day (adPrior set) both counts and
+         // active days are compared; a partial prior snapshot compares counts
+         // only, so active days is stated without the comparison claim.
+         ? (adPrior!=null ? "counts "+wlabel+" · active days through "+m.through+" · vs prior year"
+                          : "counts "+wlabel+" vs prior year · active days through "+m.through)
+       : !havePriorYear ? "no prior year loaded"
+       : !priorBlk ? "new scope · no prior-year comparison"
+       : "YTD through "+m.through+" · no completed months to compare yet");
+  return card("Headline", basis, grid);
+}
+
 function tilesSection(d){
   const t=d.totals, s=d.streaks, m=d.meta, r=t.ratios||{};
+  const em=elapsedMonths(m);
   const scanned = m.repos_scanned_for_commits!=null? m.repos_scanned_for_commits : m.repos_scanned;
+  const CODE=x=>(x.code_add||0)+(x.code_del||0), DOCS=x=>(x.docs_add||0)+(x.docs_del||0);
   const tiles=[
-    ["Commits", N(t.commits), "default branch · merges excluded"],
-    ["Pull requests", N(t.prs_opened)+" / "+N(t.prs_merged), "opened / merged · "+N(t.prs_closed_unmerged)+" closed unmerged · "+P(r.merge_rate)+" merge rate"],
-    ["Issues", N(t.issues_opened)+" / "+N(t.issues_closed), "opened / closed, authored"],
-    ["Reviews given", N(t.reviews), N(t.self_reviews_excluded||0)+" self-reviews excluded"],
-    ["Releases", N(t.releases), "published this year"],
+    ["Commits", N(t.commits), "default branch · merges excluded", x=>x.commits],
+    ["Pull requests", N(t.prs_opened)+" / "+N(t.prs_merged), "opened / merged · "+N(t.prs_closed_unmerged)+" closed unmerged · "+P(r.merge_rate)+" merge rate", x=>x.prs_merged],
+    ["Issues", N(t.issues_opened)+" / "+N(t.issues_closed), "opened / closed, authored", x=>x.issues_closed],
+    ["Reviews given", N(t.reviews), N(t.self_reviews_excluded||0)+" self-reviews excluded", x=>x.reviews],
+    ["Releases", N(t.releases), "published this year", x=>x.releases],
     ["Active repos", N(t.repos), d._scope==="all"? "of "+N(scanned)+" scanned for commits" : "in this scope"],
     ["Orgs", N(t.orgs), "configured orgs touched"],
     ["Active days", N(t.active_days), (r.commits_per_active_day!=null? N(r.commits_per_active_day)+" commits/day":"with ≥1 commit")],
     ["Longest streak", N(s.longest)+" d", (s.longest_start? s.longest_start+" → "+s.longest_end : "current "+N(s.current)+" d")],
-    ["Code lines", pm(t.code_add,t.code_del), "net "+signed(t.code_net)],
-    ["Docs lines", pm(t.docs_add,t.docs_del), "net "+signed(t.docs_net)+" · "+N(t.docs_files_add)+" files added, "+N(t.docs_files_del)+" removed"],
+    ["Code lines", pm(t.code_add,t.code_del), "net "+signed(t.code_net), CODE],
+    ["Docs lines", pm(t.docs_add,t.docs_del), "net "+signed(t.docs_net)+" · "+N(t.docs_files_add)+" files added, "+N(t.docs_files_del)+" removed", DOCS],
     ["Identities", N((m.identities.personas||[]).length)+" people", N(m.identities.emails.length)+" author emails and "+N(m.identities.logins.length)+" logins folded to one scorecard"],
     ["Median PR cycle", hoursText(t.cycle_time.median_hours), "p90 "+hoursText(t.cycle_time.p90_hours)+" · n="+N(t.cycle_time.population)],
     ["Monthly pace", N(r.avg_issues_closed_per_month)+" · "+N(r.avg_prs_merged_per_month), "avg issues closed · PRs merged / month ("+N(r.elapsed_months)+" mo)"]
   ];
   const grid=el("div",{class:"tiles"});
-  for(const [k,v,s2] of tiles) grid.append(el("div",{class:"tile"}, el("div",{class:"k"},k), el("div",{class:"v"},v), el("div",{class:"s"},s2)));
+  for(const [k,v,s2,spk] of tiles){
+    const tile=el("div",{class:"tile"}, el("div",{class:"k"},k), el("div",{class:"v"},v), el("div",{class:"s"},s2));
+    if(spk){ const vals=d.by_month.filter(x=>x.month<=em).map(spk); if(vals.some(x=>x>0)) tile.append(sparkline(vals,k)); }
+    grid.append(tile);
+  }
   return card("At a glance", d._scope==="all"? null : "scope: "+d._scope, grid);
 }
 
@@ -424,29 +753,66 @@ const MONTH_COLS=[
   ["dfiles","Docs files +/−","",x=>"+"+N(x.docs_files_add)+" / −"+N(x.docs_files_del)]
 ];
 
+function niceNum(x, round){ if(x<=0) return 1; const exp=Math.floor(Math.log10(x)); const f=x/Math.pow(10,exp);
+  const nf = round ? (f<1.5?1: f<3?2: f<7?5:10) : (f<=1?1: f<=2?2: f<=5?5:10); return nf*Math.pow(10,exp); }
+function axisTicks(max){ if(max<=0) return {max:1,ticks:[0,1]}; const range=niceNum(max,false);
+  // These axes count whole events (commits / PRs / issues), so the step is at
+  // least 1 — otherwise a low peak (max 1 or 2) yields a sub-unit step whose
+  // ticks round to repeated integers (e.g. [0,0,0,1,1,1]) at distinct gridlines.
+  const step=Math.max(1, niceNum(range/4,true));
+  const nmax=Math.ceil(max/step)*step; const t=[]; for(let v=0; v<=nmax+1e-9; v+=step) t.push(Math.round(v)); return {max:nmax,ticks:t}; }
+
 function monthlySection(d){
   const bm=d.by_month;
-  const series=[["commits","var(--s1)","Commits"],["prs_merged","var(--s2)","PRs merged"],["issues_closed","var(--s3)","Issues closed"]];
-  const W=760,H=240, padL=44, padB=28, padT=10, padR=8;
+  const scope=d._scope, scopes=d._scopes;
+  const METRICS=[["commits","Commits"],["prs_merged","PRs merged"],["issues_closed","Issues closed"]];
+  let metric="commits";
+  const groups = scope==="all" ? groupsOrdered(scopes) : [scope];
+  const stacked = scope==="all" && groups.length>0;   // legacy data has no group scopes → one series
+  function seriesFor(field){
+    if(stacked) return groups.map(g=>({g, vals:(scopes[g].by_month||[]).map(x=>x[field]||0)}));
+    return [{g:scope, vals: bm.map(x=>x[field]||0)}];
+  }
+  const chartWrap=el("div",{class:"chart"});
+  const legendWrap=el("div");
+  const W=760,H=240, padL=44, padB=28, padT=12, padR=8;
   const iw=W-padL-padR, ih=H-padT-padB;
-  const max=Math.max(1, ...bm.flatMap(x=>series.map(s=>x[s[0]])));
-  const s=svg("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Monthly commits, PRs merged and issues closed"});
-  const ticks=4;
-  for(let i=0;i<=ticks;i++){ const y=padT+ih*i/ticks; const val=Math.round(max*(1-i/ticks));
-    s.append(svg("line",{x1:padL,y1:y,x2:W-padR,y2:y,stroke:"var(--rule-soft)","stroke-width":1}));
-    const tx=svg("text",{x:padL-6,y:y+3,"text-anchor":"end","font-size":10}); tx.textContent=N(val); s.append(tx); }
-  const bw=iw/12, gw=bw*0.7, sw=gw/series.length;
-  bm.forEach((mo,mi)=>{
-    const x0=padL+bw*mi+(bw-gw)/2;
-    series.forEach((se,si)=>{
-      const v=mo[se[0]]||0; const h=ih*v/max; const x=x0+sw*si;
-      const rr=svg("rect",{x:x+0.6,y:padT+ih-h,width:Math.max(0,sw-1.2),height:h,fill:se[1],rx:2});
-      rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${MON[mi]} ${d.meta.year}</b><br>${se[2]}: ${N(v)}<br>Releases: ${N(mo.releases)} · PRs unmerged: ${N(mo.prs_closed_unmerged)}`));
-      rr.addEventListener("mouseleave",hideTip);
-      s.append(rr);
+  function drawChart(){
+    const field=metric, ser=seriesFor(field);
+    const totals=MON.map((_,mi)=> ser.reduce((a,se)=>a+(se.vals[mi]||0),0));
+    const ax=axisTicks(Math.max(...totals));
+    const s=svg("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Monthly "+field.replace("_"," ")+(stacked?" by group":"")});
+    for(const val of ax.ticks){ const y=padT+ih*(1-val/ax.max);
+      s.append(svg("line",{x1:padL,y1:y,x2:W-padR,y2:y,stroke:"var(--rule-soft)","stroke-width":1}));
+      const tx=svg("text",{x:padL-6,y:y+3,"text-anchor":"end","font-size":10}); tx.textContent=N(val); s.append(tx); }
+    const bw=iw/12, gw=bw*0.62, x0off=(bw-gw)/2;
+    MON.forEach((_,mi)=>{
+      let acc=0;
+      const perGroup=ser.map(se=>[se.g, se.vals[mi]||0]).filter(z=>z[1]>0);
+      ser.forEach(se=>{
+        const v=se.vals[mi]||0; if(v<=0) return;
+        const h=ih*v/ax.max; const yTop=padT+ih*(1-(acc+v)/ax.max);
+        const gap = (stacked && h>2.5) ? 1.5 : 0;   // 2px surface gap between stacked segments
+        const rr=svg("rect",{x:padL+bw*mi+x0off, y:yTop+gap, width:gw, height:Math.max(0,h-gap), fill:groupVar(se.g).mark, rx:1.5});
+        const rows=perGroup.map(z=>`${esc(z[0])}: ${N(z[1])}`).join("<br>");
+        rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${MON[mi]} ${d.meta.year}</b><br>${rows}<br>total: ${N(totals[mi])}`));
+        rr.addEventListener("mouseleave",hideTip);
+        s.append(rr); acc+=v;
+      });
+      const tx=svg("text",{x:padL+bw*mi+bw/2,y:H-padB+14,"text-anchor":"middle","font-size":10}); tx.textContent=MON[mi]; s.append(tx);
     });
-    const tx=svg("text",{x:padL+bw*mi+bw/2,y:H-padB+14,"text-anchor":"middle","font-size":10}); tx.textContent=MON[mi]; s.append(tx);
+    chartWrap.innerHTML=""; chartWrap.append(s);
+    legendWrap.innerHTML="";
+    if(stacked) legendWrap.append(legend(groups.map(g=>[groupVar(g).mark, g])));
+    else legendWrap.append(legend([[groupVar(scope).mark, scope]]));
+  }
+  const seg=el("div",{class:"seg",id:"metric-toggle",role:"tablist","aria-label":"Monthly metric"});
+  METRICS.forEach(([key,label])=>{
+    const b=el("button",{type:"button",role:"tab","data-m":key,"aria-selected":String(key===metric)}, label);
+    b.addEventListener("click",()=>{ metric=key; for(const x of seg.children) x.setAttribute("aria-selected",String(x.dataset.m===metric)); drawChart(); });
+    seg.append(b);
   });
+  drawChart();
   const em=elapsedMonths(d.meta);
   const shown=bm.filter(x=>x.month<=em);
   const tbl=el("table",{class:"wide"}); const hr=el("tr");
@@ -461,10 +827,12 @@ function monthlySection(d){
   fr.append(el("td",{class:"l"},"Total"));
   for(const [key,label,cls,fn] of MONTH_COLS.slice(1)) fr.append(el("td",{class:cls||""}, fn(tot)));
   tbl.append(el("tfoot",null,fr));
-  return card("Monthly activity", "chart is commits / PRs merged / issues closed; table has every counter",
-    legend(series.map(x=>[x[1],x[2]])),
-    el("div",{class:"chart"}, s),
-    el("div",{class:"tablewrap"}, tbl));
+  const hint = stacked ? "stacked by group · toggle the metric; table has every counter"
+                       : (scope==="all" ? "toggle the metric; table has every counter"
+                                        : "bars in this group's colour; table has every counter");
+  const head=el("div",{class:"sec-head"}, el("h2",null,"Monthly activity"),
+    el("div",{style:"display:flex;align-items:center;gap:12px;flex-wrap:wrap"}, el("span",{class:"hint"},hint), seg));
+  return el("section",{class:"card"}, head, legendWrap, chartWrap, el("div",{class:"tablewrap"}, tbl));
 }
 
 function calendarSection(d){
@@ -478,6 +846,14 @@ function calendarSection(d){
   const W=padL+weeks*(cell+gap), H=padT+7*(cell+gap)+4;
   const s=svg("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Contribution calendar heatmap"});
   const heat=v=>{ if(!v) return "var(--heat0)"; const q=v/max; if(q<=0.15) return "var(--heat1)"; if(q<=0.35) return "var(--heat2)"; if(q<=0.6) return "var(--heat3)"; if(q<=0.85) return "var(--heat4)"; return "var(--heat5)"; };
+  // annotations (V6): outline the longest-streak days, ring the busiest day
+  const st=d.streaks||{};
+  const streakSet=new Set();
+  if(st.longest_start && st.longest_end){
+    for(let dv=new Date(st.longest_start+"T00:00:00"); dv<=new Date(st.longest_end+"T00:00:00"); dv.setDate(dv.getDate()+1))
+      streakSet.add(dv.getFullYear()+"-"+String(dv.getMonth()+1).padStart(2,"0")+"-"+String(dv.getDate()).padStart(2,"0"));
+  }
+  const busiest=(st.busiest_day||{}).date; let bxy=null;
   let lastMonth=-1;
   days.forEach((dtv,i)=>{
     const wk=Math.floor(i/7), wd=i%7;
@@ -485,28 +861,35 @@ function calendarSection(d){
     const inYear=dtv.getFullYear()===year;
     const rec=cal[iso]; const cm=rec?rec.commits:0; const act=rec?rec.activity:0;
     const x=padL+wk*(cell+gap), y=padT+wd*(cell+gap);
-    const rr=svg("rect",{x,y,width:cell,height:cell,rx:3,fill:inYear?heat(cm):"transparent","stroke":"var(--rule-soft)","stroke-width":inYear?0.5:0});
-    if(inYear){ rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${iso}</b><br>${N(cm)} commits · ${N(act)} activity`)); rr.addEventListener("mouseleave",hideTip); }
+    const onStreak=inYear && streakSet.has(iso);
+    const rr=svg("rect",{x,y,width:cell,height:cell,rx:3,fill:inYear?heat(cm):"transparent",
+      "stroke":onStreak?"var(--ink)":"var(--rule-soft)","stroke-width":inYear?(onStreak?1.4:0.5):0});
+    if(inYear){ rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${iso}</b><br>${N(cm)} commits · ${N(act)} activity${onStreak?"<br>longest streak":""}${iso===busiest?"<br>busiest day":""}`)); rr.addEventListener("mouseleave",hideTip); }
     s.append(rr);
+    if(inYear && iso===busiest) bxy=[x+cell/2, y+cell/2];
     if(inYear && dtv.getMonth()!==lastMonth && wd===0){ lastMonth=dtv.getMonth(); const tx=svg("text",{x,y:padT-6,"font-size":9}); tx.textContent=MON[dtv.getMonth()]; s.append(tx); }
   });
+  if(bxy) s.append(svg("circle",{cx:bxy[0],cy:bxy[1],r:cell*0.72,fill:"none",stroke:"var(--ink)","stroke-width":1.6}));
   ["Mon","Wed","Fri"].forEach(l=>{ const wd=WD.indexOf(l)+1; const y=padT+wd*(cell+gap)+cell-3; const tx=svg("text",{x:0,y,"font-size":9}); tx.textContent=l; s.append(tx); });
-  const bd=d.streaks.busiest_day;
-  return card("Contribution calendar", (bd&&bd.date)? "busiest day "+bd.date+" ("+N(bd.commits)+" commits)": null,
+  const capParts=[];
+  if(st.longest_start && st.longest_end) capParts.push("outlined: longest streak "+fmtDate(st.longest_start)+" – "+fmtDate(st.longest_end)+" ("+N(st.longest)+" d)");
+  if(busiest) capParts.push("ringed: busiest day "+fmtDate(busiest)+" ("+N((st.busiest_day||{}).commits)+" commits)");
+  return card("Contribution calendar", null,
     el("div",{class:"chart"}, s),
-    legend([["var(--heat1)","less"],["var(--heat3)","more"],["var(--heat5)","most"]]));
+    legend([["var(--heat1)","less"],["var(--heat3)","more"],["var(--heat5)","most"]]),
+    capParts.length? el("div",{class:"cap"}, capParts.join(" · ")) : null);
 }
 
-function barCell(v,max){ const pct=max? Math.round(100*v/max):0; return el("span",{class:"bar-mini",style:"width:"+Math.max(pct*0.7,v?2:0)+"px"}); }
+function barCell(v,max,color){ const pct=max? Math.round(100*v/max):0; return el("span",{class:"bar-mini",style:"width:"+Math.max(pct*0.7,v?2:0)+"px"+(color?";background:"+color:"")}); }
 
 function orgSection(d){
   const rows=[...d.by_org].sort((a,b)=>b.commits-a.commits);
   const max=Math.max(1,...rows.map(r=>r.commits));
   const cols=[
-    ["Group","l",r=>r.group],
+    ["Group","l",r=>el("span",null, groupDot(r.group,"rowdot"), r.group)],
     ["Repos","",r=>N(r.repos)],
     ["Commits","",r=>N(r.commits)],
-    ["","l",r=>barCell(r.commits,max)],
+    ["","l",r=>barCell(r.commits,max,groupVar(r.group).mark)],
     ["Code +/−","",r=>pm(r.code_add,r.code_del)],
     ["Docs +/−","",r=>pm(r.docs_add,r.docs_del)],
     ["Docs files +/−","",r=>"+"+N(r.docs_files_add)+" / −"+N(r.docs_files_del)],
@@ -524,6 +907,98 @@ function orgSection(d){
   tbl.append(tb);
   const hint = d._scope==="all"? "click a scope above to focus one group" : "the selected scope is highlighted";
   return card("By org / owner", hint, el("div",{class:"tablewrap"}, tbl));
+}
+
+// ---- treemap (V7): squarified, sized by commits or code lines, group-coloured
+function clip(str, n){ return str.length<=n ? str : str.slice(0, Math.max(1,n-1))+"…"; }
+function squarify(data, X, Y, W, H){
+  const total=data.reduce((a,d)=>a+d.v,0) || 1;
+  const nodes=data.map(d=>({d, v:d.v, area:d.v/total*(W*H)}));
+  const out=[]; const rect={x:X,y:Y,w:W,h:H}; let row=[];
+  const worst=(row, side)=>{ let s=0,mn=Infinity,mx=0; for(const r of row){ s+=r.area; if(r.area<mn)mn=r.area; if(r.area>mx)mx=r.area; }
+    return Math.max((side*side*mx)/(s*s), (s*s)/(side*side*mn)); };
+  const place=(row)=>{ const s=row.reduce((a,r)=>a+r.area,0); const vertical=rect.w>=rect.h;
+    if(vertical){ const rw=s/rect.h; let yy=rect.y; for(const r of row){ const rh=r.area/rw; out.push(Object.assign(r,{x:rect.x,y:yy,w:rw,h:rh})); yy+=rh; } rect.x+=rw; rect.w-=rw; }
+    else { const rh=s/rect.w; let xx=rect.x; for(const r of row){ const rw=r.area/rh; out.push(Object.assign(r,{x:xx,y:rect.y,w:rw,h:rh})); xx+=rw; } rect.y+=rh; rect.h-=rh; } };
+  let i=0;
+  while(i<nodes.length){ const n=nodes[i]; const side=Math.min(rect.w,rect.h);
+    if(row.length===0){ row.push(n); i++; continue; }
+    if(worst(row.concat(n), side) <= worst(row, side)){ row.push(n); i++; }
+    else { place(row); row=[]; } }
+  if(row.length) place(row);
+  return out;
+}
+let TREEMAP_REDRAW=null;
+function treemapSection(d){
+  const METRICS=[["commits","Commits",r=>r.commits||0],["lines","Code lines Δ",r=>(r.code_add||0)+(r.code_del||0)]];
+  let metric=METRICS[0];
+  const box=el("div",{class:"treemap"});
+  const scope=d._scope;
+  const groupOf=r=> r._agg!=null? "other" : (CUR_RGM[r.full_name]||"other");
+  function rows(){
+    let rs=d.by_repo.map(r=>({r, v:metric[2](r)})).filter(z=>z.v>0).sort((a,b)=>b.v-a.v);
+    if(rs.length>40){ const top=rs.slice(0,40), rest=rs.slice(40), sum=rest.reduce((a,z)=>a+z.v,0);
+      if(sum>0) top.push({r:{full_name:"other repos",name:"other repos",owner:"other",_agg:rest.length}, v:sum}); rs=top; }
+    return rs;
+  }
+  function drawTreemap(rs){
+    const W=760,H=330;
+    const laid=squarify(rs,0,0,W,H);
+    const s=svg("svg",{viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Repositories sized by "+metric[1]});
+    laid.forEach((nd,idx)=>{
+      const z=nd.d, grp=groupOf(z.r), pct=100-(idx%4)*7;
+      // The >40-repo overflow bucket: in a single group scope every collapsed
+      // repo belongs to that group, so tint the block with the scope's hue (a
+      // light mix so it still reads as an aggregate, not one repo); the combined
+      // "all" view keeps the neutral "other" colour. Label/tooltip stay on grp.
+      const scopeAgg = z.r._agg!=null && scope!=="all";
+      const fill = scopeAgg
+        ? "color-mix(in srgb, "+groupVar(scope).mark+" 42%, var(--surface))"
+        : "color-mix(in srgb, "+groupVar(grp).mark+" "+pct+"%, var(--surface))";
+      const rr=svg("rect",{x:nd.x+0.75,y:nd.y+0.75,width:Math.max(0,nd.w-1.5),height:Math.max(0,nd.h-1.5),fill,rx:2});
+      rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${esc(z.r.full_name)}</b><br>${esc(grp)}<br>${metric[1]}: ${N(z.v)}${z.r._agg!=null?" ("+z.r._agg+" repos)":""}`));
+      rr.addEventListener("mouseleave",hideTip);
+      s.append(rr);
+      if(nd.w>58 && nd.h>24){
+        // Labels are decorative: pointer-events:none lets the pointer fall
+        // through to the <rect> beneath (a sibling painted below), so hovering a
+        // block's name/value keeps the rect's tooltip up instead of firing its
+        // mouseleave.
+        const lstyle="fill:#fff;stroke:rgba(0,0,0,.55);stroke-width:2.4px;paint-order:stroke;pointer-events:none";
+        const t1=svg("text",{x:nd.x+6,y:nd.y+16,"font-size":11,style:lstyle}); t1.textContent=clip(z.r.name||z.r.full_name, Math.floor((nd.w-10)/6.4)); s.append(t1);
+        if(nd.h>40){ const t2=svg("text",{x:nd.x+6,y:nd.y+30,"font-size":10,style:lstyle}); t2.textContent=N(z.v); s.append(t2); }
+      }
+    });
+    box.innerHTML=""; box.append(el("div",{class:"chart"}, s));
+  }
+  function drawBars(rs){
+    const top=rs.slice(0,10), max=top.length?top[0].v:1;
+    const wrap=el("div",{class:"tm-bars"});
+    for(const z of top){ const grp=groupOf(z.r);
+      wrap.append(el("div",{class:"tm-bar"},
+        el("div",{class:"lbl"}, groupDot(grp,"rowdot"), z.r.name||z.r.full_name),
+        el("div",{class:"track"}, el("div",{class:"fill",style:"width:"+Math.max(2,Math.round(100*z.v/max))+"%;background:"+groupVar(grp).mark})),
+        el("div",{class:"num"}, N(z.v)))); }
+    box.innerHTML=""; box.append(wrap);
+  }
+  const hintEl=el("span",{class:"hint"},"");
+  function draw(){
+    hintEl.textContent="blocks sized by "+metric[1].toLowerCase()+", coloured by group";
+    const rs=rows();
+    if(!rs.length){ box.innerHTML=""; box.append(el("div",{class:"cap"},"no repositories with "+metric[1].toLowerCase()+" in this scope")); return; }
+    const wpx=box.clientWidth || (box.parentElement? box.parentElement.clientWidth:0);
+    const narrow = wpx>0 ? wpx<520 : innerWidth<560;
+    narrow ? drawBars(rs) : drawTreemap(rs);
+  }
+  TREEMAP_REDRAW=draw;
+  requestAnimationFrame(draw);
+  const seg=el("div",{class:"seg",id:"treemap-metric",role:"tablist","aria-label":"Treemap size metric"});
+  METRICS.forEach(m=>{ const b=el("button",{type:"button",role:"tab","data-m":m[0],"aria-selected":String(m===metric)}, m[1]);
+    b.addEventListener("click",()=>{ metric=m; for(const x of seg.children) x.setAttribute("aria-selected",String(x.dataset.m===m[0])); draw(); }); seg.append(b); });
+  hintEl.textContent="blocks sized by "+metric[1].toLowerCase()+", coloured by group";
+  const head=el("div",{class:"sec-head"}, el("h2",null,"Where the year went"),
+    el("div",{style:"display:flex;align-items:center;gap:12px;flex-wrap:wrap"}, hintEl, seg));
+  return el("section",{class:"card"}, head, box);
 }
 
 const REPO_COLS=[
@@ -551,8 +1026,11 @@ function sortKey(r,k){
   return r[k];
 }
 function repoLink(r){
+  const grp=CUR_RGM[r.full_name] || "other";
   const a=el("a",{href:"https://github.com/"+r.full_name,target:"_blank",rel:"noopener"}, r.full_name);
-  const wrap=el("span",null,a);
+  const gv=groupVar(grp);
+  const wrap=el("span",null, groupDot(grp,"rowdot"), a,
+    el("span",{class:"obadge",style:"background:"+gv.fill+";color:"+gv.on}, grp));
   if(r.private) wrap.append(el("span",{class:"badge"},"private"));
   if(r.fork) wrap.append(el("span",{class:"badge"},"fork"));
   if(r.archived) wrap.append(el("span",{class:"badge"},"archived"));
@@ -579,7 +1057,7 @@ function repoSection(d){
     const tb=el("tbody");
     for(const r of rows){ const tr=el("tr");
       for(const [key,label,cls,fn] of REPO_COLS) tr.append(el("td",{class:cls||""}, fn(r)));
-      tr.append(el("td",{class:"l"}, barCell(r.commits,maxC)));
+      tr.append(el("td",{class:"l"}, barCell(r.commits,maxC, groupVar(CUR_RGM[r.full_name]||"other").mark)));
       tb.append(tr);
     }
     tbl.append(tb); tblwrap.innerHTML=""; tblwrap.append(tbl);
@@ -595,6 +1073,10 @@ function rhythmSection(d){
   const W=padL+24*(cell+gap), H=padT+7*(cell+gap)+4;
   const s=svg("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Commits by weekday and hour"});
   const heat=v=>{ if(!v) return "var(--heat0)"; const q=v/max; if(q<=0.15) return "var(--heat1)"; if(q<=0.35) return "var(--heat2)"; if(q<=0.6) return "var(--heat3)"; if(q<=0.85) return "var(--heat4)"; return "var(--heat5)"; };
+  // working-hours band (V9): Mon–Fri 09:00–17:00, drawn behind the cells
+  const bx=padL+9*(cell+gap)-1, bw2=8*(cell+gap)-gap+2, by=padT-2, bh=5*(cell+gap)-gap+4;
+  s.append(svg("rect",{x:bx,y:by,width:bw2,height:bh,rx:4,fill:"var(--accent)","fill-opacity":0.08}));
+  s.append(svg("rect",{x:bx,y:by,width:bw2,height:bh,rx:4,fill:"none",stroke:"var(--accent)","stroke-opacity":0.45,"stroke-width":1}));
   for(let wd=0;wd<7;wd++){ const tx=svg("text",{x:0,y:padT+wd*(cell+gap)+cell-3,"font-size":9}); tx.textContent=WD[wd]; s.append(tx);
     for(let h=0;h<24;h++){ const v=wh[wd][h]||0; const x=padL+h*(cell+gap), y=padT+wd*(cell+gap);
       const rr=svg("rect",{x,y,width:cell,height:cell,rx:3,fill:heat(v)});
@@ -606,13 +1088,19 @@ function rhythmSection(d){
   const totals=wh.map(row=>row.reduce((a,b)=>a+b,0)); const wmax=Math.max(1,...totals);
   const bs=svg("svg",{viewBox:"0 0 760 150",role:"img","aria-label":"Commits per weekday"});
   const bw=760/7;
-  totals.forEach((v,wd)=>{ const h=120*v/wmax; const x=bw*wd+bw*0.2; const rr=svg("rect",{x,y:130-h,width:bw*0.6,height:h,fill:"var(--s1)",rx:2});
+  totals.forEach((v,wd)=>{ const h=120*v/wmax; const x=bw*wd+bw*0.2; const rr=svg("rect",{x,y:130-h,width:bw*0.6,height:h,fill:"var(--accent)",rx:2});
     rr.addEventListener("mousemove",ev=>showTip(ev,`<b>${WD[wd]}</b><br>${N(v)} commits`)); rr.addEventListener("mouseleave",hideTip); bs.append(rr);
     const tx=svg("text",{x:bw*wd+bw/2,y:146,"text-anchor":"middle","font-size":10}); tx.textContent=WD[wd]; bs.append(tx);
     const vt=svg("text",{x:bw*wd+bw/2,y:126-h,"text-anchor":"middle","font-size":9}); vt.textContent=v?N(v):""; bs.append(vt);
   });
+  let tot=0, work=0, best=[0,0], bestv=-1;
+  for(let wd=0;wd<7;wd++) for(let h=0;h<24;h++){ const v=wh[wd][h]||0; tot+=v; if(wd<=4 && h>=9 && h<=16) work+=v; if(v>bestv){ bestv=v; best=[wd,h]; } }
+  const pct = tot? Math.round(100*work/tot) : 0;
+  const cap = tot ? (pct+"% of commits land Mon–Fri 09:00–17:00; busiest hour "+WD[best[0]]+" "+String(best[1]).padStart(2,"0")+":00")
+                  : "no commit-time data in this scope";
   return card("Rhythm", "commit timing in "+d.meta.timezone,
     el("div",{class:"chart"}, s),
+    el("div",{class:"cap"}, cap),
     el("div",{class:"chart"}, bs));
 }
 
@@ -722,6 +1210,9 @@ for(const y of [...YEARS].sort((a,b)=>b-a)){
   tabs.append(b);
 }
 try{ addEventListener("hashchange",()=>{ const h=fromHash(); if(h.year!==current.year || h.scope!==current.scope) render(h.year, h.scope); }); }catch(e){}
+let _rsz;
+addEventListener("resize",()=>{ clearTimeout(_rsz); _rsz=setTimeout(()=>{ if(TREEMAP_REDRAW) TREEMAP_REDRAW(); }, 150); });
+computeGroupColors();
 const boot=fromHash();
 render(boot.year, boot.scope);
 </script>"""
