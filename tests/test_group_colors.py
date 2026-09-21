@@ -104,6 +104,15 @@ class Resolver(unittest.TestCase):
         gmap, _, _ = resolve(years, ["example-org=g6"])
         self.assertEqual(gmap["example-org"], 6)
 
+    def test_unknown_group_key_warns_and_frees_slot(self):
+        # A slot pinned to a group absent from the data must not be consumed: the
+        # present group still gets slot 1, and the typo is reported.
+        years = {2025: year(2025, [("example-org", 40)], {"typo-org": "g1"})}
+        gmap, _, warns = resolve(years)
+        self.assertNotIn("typo-org", gmap)               # never rendered
+        self.assertEqual(gmap["example-org"], 1)         # slot 1 was not stolen
+        self.assertTrue(any("typo-org" in w for w in warns))
+
     def test_close_colours_warn(self):
         # Two hexes that resolve to nearly the same colour trigger the
         # distinguishability warning (non-fatal).
@@ -118,7 +127,11 @@ class HexDerivation(unittest.TestCase):
         return build._contrast(build._hex_to_rgb(hex_a), build._hex_to_rgb(hex_b))
 
     def test_derived_tokens_meet_contrast_both_themes(self):
-        for hexstr in ("#7a4fd0", "#b5179e", "#2a9d8f", "#e76f51", "#1d3557"):
+        # Includes borderline inputs whose naive (pre-rounding) derivation lands a
+        # hair under threshold, to lock the guarantee against 8-bit quantization
+        # (#1c1 -> mark ~2.999:1, #289 -> on-fill ~4.497:1 before the fix).
+        for hexstr in ("#7a4fd0", "#b5179e", "#2a9d8f", "#e76f51", "#1d3557",
+                       "#1c1", "#289", "#0f0", "#ff0", "#00f"):
             tok = build.derive_hex_tokens(hexstr)
             self.assertIsNotNone(tok, hexstr)
             lm, lf, lo = tok["light"]

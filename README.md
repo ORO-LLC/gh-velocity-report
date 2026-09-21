@@ -182,7 +182,9 @@ re-run to fill them in.
 
 `build.py` flags: `--data-dir`, `--out`, `--redact-private` (see Privacy), and
 `--group-color NAME=VALUE` (repeatable) to pin a group's colour at build time
-without re-collecting — it overrides `config.group_colors` for that build.
+without re-collecting — it overrides `config.group_colors` for that build. Quote
+a hex value so the shell does not treat `#` as a comment, e.g.
+`--group-color 'widgets-inc=#7a4fd0'`.
 
 ## Privacy
 

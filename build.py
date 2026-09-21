@@ -56,8 +56,12 @@ def _hex_to_rgb(h):
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
+def _quantize(rgb):
+    return tuple(max(0, min(255, int(round(c)))) for c in rgb)
+
+
 def _rgb_to_hex(rgb):
-    return "#%02x%02x%02x" % tuple(max(0, min(255, int(round(c)))) for c in rgb)
+    return "#%02x%02x%02x" % _quantize(rgb)
 
 
 def _lin(c):
@@ -116,19 +120,22 @@ def _hsl_to_rgb(h, s, l):
     return (hue(hh + 1 / 3) * 255, hue(hh) * 255, hue(hh - 1 / 3) * 255)
 
 
-def _reach_contrast(rgb, surface, target, steps=60):
+def _reach_contrast(rgb, surface, target, steps=120):
     """Adjust rgb's lightness (away from the surface) until it clears `target`
-    contrast against `surface`. Returns the adjusted rgb, or None if no lightness
-    reaches it. An already-passing colour is returned unchanged."""
-    if _contrast(rgb, surface) >= target:
-        return rgb
+    contrast against `surface`. Contrast is measured on the 8-bit-quantized colour
+    that will actually be emitted (never on the pre-rounding float), so a token
+    returned here is guaranteed to meet the threshold once written as hex. Returns
+    the quantized rgb, or None if no lightness reaches it."""
+    q = _quantize(rgb)
+    if _contrast(q, surface) >= target:
+        return q
     h, s, l = _rgb_to_hsl(rgb)
     darken = _rel_lum(surface) > 0.5
     step = 1.0 / steps
     for _ in range(steps):
         l += -step if darken else step
         clamped = max(0.0, min(1.0, l))
-        cand = _hsl_to_rgb(h, s, clamped)
+        cand = _quantize(_hsl_to_rgb(h, s, clamped))
         if _contrast(cand, surface) >= target:
             return cand
         if l <= 0.0 or l >= 1.0:
@@ -136,16 +143,17 @@ def _reach_contrast(rgb, surface, target, steps=60):
     return None
 
 
-def _reach_text(fill0, surface, near_black, ttext=4.5, tsurf=3.0, steps=60):
+def _reach_text(fill0, surface, near_black, ttext=4.5, tsurf=3.0, steps=120):
     """From `fill0`, find a fill lightness whose best text colour (near-black or
     white) clears `ttext` while the fill itself keeps `tsurf` against the surface.
-    Returns (fill_rgb, on_rgb) or (None, None)."""
+    Measured on the quantized fill so the emitted token holds. Returns
+    (fill_rgb, on_rgb) or (None, None)."""
     h, s, l = _rgb_to_hsl(fill0)
     darken = _rel_lum(surface) > 0.5
     step = 1.0 / steps
     for _ in range(steps + 1):
         clamped = max(0.0, min(1.0, l))
-        fill = _hsl_to_rgb(h, s, clamped)
+        fill = _quantize(_hsl_to_rgb(h, s, clamped))
         cw, cb = _contrast(_WHITE, fill), _contrast(near_black, fill)
         on = _WHITE if cw >= cb else near_black
         if max(cw, cb) >= ttext and _contrast(fill, surface) >= tsurf:
@@ -272,9 +280,22 @@ def resolve_group_colors(years, cli_overrides=None, warn=None):
             warn(f"group_colors: group {name!r} value {val!r} is not a palette slot "
                  f"(g1-g8) or hex colour; falling back to the automatic slot")
 
+    # An explicit choice for a group that is not present in any loaded year (a
+    # typo, a stale org, a case mismatch) must not silently consume a palette
+    # slot and shift every automatic group. Drop it with a warning, and release
+    # any slot it reserved. Build is the only place that knows the group union.
+    order = _union_groups(years)
+    union = set(order)
+    for name in list(resolved):
+        if name not in union:
+            warn(f"group_colors: group {name!r} is not present in the loaded data; ignoring it")
+            val = resolved.pop(name)
+            if isinstance(val, int):
+                taken.discard(val)
+
     gmap = {}
     slot = 0
-    for g in _union_groups(years):
+    for g in order:
         if g in resolved:
             gmap[g] = resolved[g]
             continue
@@ -1548,7 +1569,12 @@ render(boot.year, boot.scope);
 
 
 def _body(payload, gc_json):
-    return BODY.replace("__DATA__", payload).replace("__GROUPCOLORS__", gc_json)
+    # Substitute the colour-map marker BEFORE inserting the data payload: a
+    # serialized field (e.g. a display_name) could itself contain the literal
+    # "__GROUPCOLORS__", and replacing markers after the payload is in place would
+    # corrupt it. gc_json holds only group names + short tokens and can never
+    # contain "__DATA__", so this order is safe both ways.
+    return BODY.replace("__GROUPCOLORS__", gc_json).replace("__DATA__", payload)
 
 
 def full_document(payload, gc_json, style):
@@ -1577,7 +1603,8 @@ def main(argv=None):
                     help="replace private repo names with <owner>/private-repo-N so the page can be shared publicly")
     ap.add_argument("--group-color", action="append", default=[], metavar="NAME=VALUE",
                     help="pin a group's colour to a palette slot (g1-g8) or a hex colour, "
-                         "e.g. --group-color example-org=g3 --group-color widgets-inc=#7a4fd0; "
+                         "e.g. --group-color example-org=g3 --group-color 'widgets-inc=#7a4fd0' "
+                         "(quote a #hex so the shell does not treat it as a comment); "
                          "repeatable, and overrides config group_colors at build time")
     args = ap.parse_args(argv)
 
